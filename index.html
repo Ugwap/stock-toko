@@ -12,7 +12,7 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
       <h1 class="text-2xl font-bold text-slate-900">Rekap Ketersediaan Barang</h1>
       <p class="text-sm text-slate-500 mt-1">
-        Import file <strong>.pdf</strong>, <strong>.csv</strong>, <strong>.txt</strong>, atau <strong>paste teks</strong> — hasil rekap hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong>.
+        Import file <strong>.pdf</strong>, <strong>.csv</strong>, <strong>.txt</strong>, atau <strong>paste teks</strong> — hasil rekap hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong> yang bisa diedit.
       </p>
     </div>
 
@@ -26,7 +26,7 @@
         <label class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/60">
           <input id="fileInput" type="file" accept=".pdf,.csv,.txt" class="hidden" />
           <div class="text-sm font-medium text-indigo-600">Pilih File PDF, CSV, atau TXT</div>
-          <div id="fileLabel" class="text-xs text-slate-500 mt-1">PDF akan diekstrak dan langsung direkap</div>
+          <div id="fileLabel" class="text-xs text-slate-500 mt-1">Teks akan dimuat dulu, lalu klik Proses Rekap</div>
         </label>
 
         <div>
@@ -67,9 +67,12 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h2 class="text-lg font-semibold text-slate-900">2. Hasil Rekap Ketersediaan</h2>
-            <p class="text-xs text-slate-500">Hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong></p>
+            <p class="text-xs text-slate-500">Hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong> (Qty bisa diubah langsung)</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <button id="btnLoadSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
+              Muat dari Sheet
+            </button>
             <button id="btnSaveSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
               Simpan ke Google Sheets
             </button>
@@ -107,13 +110,13 @@
               <tr>
                 <th class="py-3 px-4 w-14">No</th>
                 <th class="py-3 px-4">Nama Barang</th>
-                <th class="py-3 px-4 text-right w-32">Qty</th>
+                <th class="py-3 px-4 text-right w-36">Qty</th>
               </tr>
             </thead>
             <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
               <tr>
                 <td colspan="3" class="py-10 text-center text-slate-400">
-                  Belum ada data direkap. Pilih file PDF/CSV/TXT atau tempel teks dokumen di kiri.
+                  Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau klik "Muat dari Sheet".
                 </td>
               </tr>
             </tbody>
@@ -131,6 +134,7 @@
 
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxT1vKFnhhrATrkCGle6mp05qWqa02BeS5bEePAlxSjzPboqvdpBLiQbMGgdzeLL_dm/exec";
     const STORAGE_GAS_KEY = "stock_toko_gas_url";
+    const STORAGE_REKAP_KEY = "stock_toko_rekap_aktif";
 
     let rowsData = [];
     let currentFileName = "Input Manual";
@@ -143,11 +147,39 @@
     const tableBody = document.getElementById("tableBody");
     const searchBox = document.getElementById("searchBox");
     const btnSaveSheet = document.getElementById("btnSaveSheet");
+    const btnLoadSheet = document.getElementById("btnLoadSheet");
 
+    const savedGasUrl = localStorage.getItem(STORAGE_GAS_KEY);
+    if (!savedGasUrl || savedGasUrl !== DEFAULT_GAS_URL) {
+      localStorage.setItem(STORAGE_GAS_KEY, DEFAULT_GAS_URL);
+    }
     gasUrlInput.value = localStorage.getItem(STORAGE_GAS_KEY) || DEFAULT_GAS_URL;
+
     gasUrlInput.addEventListener("change", () => {
-      localStorage.setItem(STORAGE_GAS_KEY, gasUrlInput.value.trim());
+      const val = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
+      gasUrlInput.value = val;
+      localStorage.setItem(STORAGE_GAS_KEY, val);
     });
+
+    function saveLocalState() {
+      localStorage.setItem(STORAGE_REKAP_KEY, JSON.stringify({
+        fileName: currentFileName,
+        items: rowsData
+      }));
+    }
+
+    function loadLocalState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_REKAP_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.items)) {
+          rowsData = parsed.items;
+          currentFileName = parsed.fileName || "Rekap Tersimpan";
+          renderTable();
+        }
+      } catch (_) {}
+    }
 
     function setStatus(message, type = "info") {
       statusBox.classList.remove(
@@ -365,20 +397,28 @@
         .replace(/"/g, "&quot;");
     }
 
+    function updateSummary(list) {
+      document.getElementById("countItems").textContent = fmtNum(list.length);
+      document.getElementById("countQty").textContent = fmtNum(
+        list.reduce((acc, item) => acc + (Number(item.qty) || 0), 0)
+      );
+    }
+
     function renderTable() {
       const q = searchBox.value.trim().toLowerCase();
-      const filtered = q ? rowsData.filter((i) => i.name.toLowerCase().includes(q)) : rowsData;
+      const filtered = q
+        ? rowsData
+            .map((item, realIndex) => ({ item, realIndex }))
+            .filter(({ item }) => item.name.toLowerCase().includes(q))
+        : rowsData.map((item, realIndex) => ({ item, realIndex }));
 
-      document.getElementById("countItems").textContent = fmtNum(filtered.length);
-      document.getElementById("countQty").textContent = fmtNum(
-        filtered.reduce((acc, item) => acc + item.qty, 0)
-      );
+      updateSummary(filtered.map(({ item }) => item));
 
       if (!filtered.length) {
         tableBody.innerHTML = `
           <tr>
             <td colspan="3" class="py-10 text-center text-slate-400">
-              Tidak ada data yang cocok.
+              Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau klik "Muat dari Sheet".
             </td>
           </tr>`;
         return;
@@ -386,14 +426,32 @@
 
       tableBody.innerHTML = filtered
         .map(
-          (item, i) => `
+          ({ item, realIndex }, idx) => `
           <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-4 text-slate-500">${i + 1}</td>
+            <td class="py-2.5 px-4 text-slate-500">${idx + 1}</td>
             <td class="py-2.5 px-4 font-medium text-slate-900">${escapeHtml(item.name)}</td>
-            <td class="py-2.5 px-4 text-right font-semibold text-indigo-700">${fmtNum(item.qty)}</td>
+            <td class="py-2.5 px-4 text-right">
+              <input type="number" min="0" step="1" data-idx="${realIndex}" value="${Number(item.qty) || 0}"
+                class="qty-input w-24 text-right font-semibold text-indigo-700 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-lg px-2 py-1 outline-none" />
+            </td>
           </tr>`
         )
         .join("");
+
+      tableBody.querySelectorAll(".qty-input").forEach((input) => {
+        input.addEventListener("input", (e) => {
+          const idx = Number(e.target.dataset.idx);
+          const val = Math.max(0, Number(e.target.value) || 0);
+          if (rowsData[idx]) {
+            rowsData[idx].qty = val;
+            saveLocalState();
+            const currentFiltered = searchBox.value.trim()
+              ? rowsData.filter((i) => i.name.toLowerCase().includes(searchBox.value.trim().toLowerCase()))
+              : rowsData;
+            updateSummary(currentFiltered);
+          }
+        });
+      });
     }
 
     async function extractPdf(file) {
@@ -430,7 +488,7 @@
       if (!file) return;
       clearStatus();
       currentFileName = file.name;
-      fileLabel.textContent = `Memproses ${file.name}...`;
+      fileLabel.textContent = `Membaca ${file.name}...`;
 
       try {
         let text = "";
@@ -444,8 +502,6 @@
 
         if (!text.trim() || isRawPdfBinary(text)) {
           fileLabel.textContent = `${file.name} tidak menghasilkan teks bersih`;
-          rowsData = [];
-          renderTable();
           setStatus(
             "PDF tidak bisa diekstrak menjadi teks bersih. Buka PDF-nya, copy teks (Ctrl+A, Ctrl+C), paste di kotak kiri, lalu klik Proses Rekap.",
             "warn"
@@ -453,14 +509,10 @@
           return;
         }
 
-        fileLabel.textContent = `Dimuat: ${file.name}`;
-        rowsData = parseDocumentText(text);
-        renderTable();
-        setStatus(`Berhasil merekap ${rowsData.length} jenis barang (Nama Barang & Qty) dari ${file.name}.`, "success");
+        fileLabel.textContent = `Dimuat: ${file.name} (klik Proses Rekap)`;
+        setStatus(`File ${file.name} dimuat ke kotak teks. Klik "Proses Rekap (Nama Barang & Qty)" untuk memperbarui hasil rekap.`, "info");
       } catch (err) {
         fileLabel.textContent = "Gagal membaca file";
-        rowsData = [];
-        renderTable();
         setStatus(`Gagal membaca file: ${err.message}`, "error");
       }
     });
@@ -471,11 +523,48 @@
         currentFileName = "Input Manual";
       }
       rowsData = parseDocumentText(rawInput.value);
+      saveLocalState();
       renderTable();
       if (rowsData.length > 0) {
         setStatus(`Berhasil memproses ${rowsData.length} jenis barang (Nama Barang & Qty).`, "success");
       } else {
         setStatus("Tidak ada item barang yang dikenali dari teks tersebut.", "warn");
+      }
+    });
+
+    btnLoadSheet.addEventListener("click", async () => {
+      clearStatus();
+      const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
+      localStorage.setItem(STORAGE_GAS_KEY, gasUrl);
+
+      if (!gasUrl) {
+        setStatus("Masukkan URL Google Apps Script Web App terlebih dahulu.", "warn");
+        return;
+      }
+
+      btnLoadSheet.disabled = true;
+      btnLoadSheet.textContent = "Memuat...";
+
+      try {
+        const res = await fetch(gasUrl, { method: "GET" });
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.items)) {
+          rowsData = data.items.map((i) => ({
+            name: String(i.name || "").trim(),
+            qty: Math.max(0, Number(i.qty) || 0)
+          }));
+          currentFileName = "Google Sheets (Sheet1)";
+          saveLocalState();
+          renderTable();
+          setStatus(data.message || `Berhasil memuat ${rowsData.length} barang dari Sheet1.`, "success");
+        } else {
+          setStatus(data.message || "Gagal memuat data dari Google Sheets.", "warn");
+        }
+      } catch (err) {
+        setStatus(`Gagal sinkron dari Google Sheets: ${err.message}`, "error");
+      } finally {
+        btnLoadSheet.disabled = false;
+        btnLoadSheet.textContent = "Muat dari Sheet";
       }
     });
 
@@ -499,7 +588,7 @@
       try {
         const payload = {
           namaFile: currentFileName,
-          items: rowsData.map((i) => ({ name: i.name, qty: i.qty }))
+          items: rowsData.map((i) => ({ name: i.name, qty: Math.max(0, Number(i.qty) || 0) }))
         };
 
         await fetch(gasUrl, {
@@ -509,6 +598,7 @@
           body: JSON.stringify(payload)
         });
 
+        saveLocalState();
         setStatus(
           `Data (${rowsData.length} jenis barang) dikirim ke Google Sheets (Sheet1 & Sheet2).`,
           "success"
@@ -546,6 +636,8 @@
     });
 
     document.getElementById("btnPrint").addEventListener("click", () => window.print());
+
+    loadLocalState();
   </script>
 </body>
 </html>
