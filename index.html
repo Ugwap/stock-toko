@@ -9,25 +9,11 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
   <div class="max-w-6xl mx-auto px-4 py-8">
-    <!-- Header -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900">Rekap Ketersediaan Barang</h1>
-        <p class="text-sm text-slate-500 mt-1">
-          Import file <strong>.pdf</strong>, <strong>.csv</strong>, <strong>.txt</strong>, atau <strong>paste teks</strong> — hasil rekap hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong>.
-        </p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button id="btnSampleA" type="button" class="px-3.5 py-2 text-sm font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-          Contoh SD00029158
-        </button>
-        <button id="btnSampleB" type="button" class="px-3.5 py-2 text-sm font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-          Contoh Invoice
-        </button>
-        <button id="btnClear" type="button" class="px-3.5 py-2 text-sm font-medium rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition">
-          Bersihkan
-        </button>
-      </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+      <h1 class="text-2xl font-bold text-slate-900">Rekap Ketersediaan Barang</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Import file <strong>.pdf</strong>, <strong>.csv</strong>, <strong>.txt</strong>, atau <strong>paste teks</strong> — hasil rekap hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong>.
+      </p>
     </div>
 
     <div id="statusBox" class="hidden mb-6 rounded-xl border px-4 py-3 text-sm"></div>
@@ -47,8 +33,16 @@
           <label for="rawInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
             Teks Dokumen (Bisa Diedit / Di-Paste Manual)
           </label>
-          <textarea id="rawInput" rows="13" placeholder="Pilih file PDF/CSV/TXT di atas atau paste teks invoice/stok di sini..."
+          <textarea id="rawInput" rows="12" placeholder="Pilih file PDF/CSV/TXT di atas atau paste teks dokumen di sini..."
             class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-xs font-mono p-3 outline-none"></textarea>
+        </div>
+
+        <div>
+          <label for="gasUrlInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+            URL Google Apps Script Web App
+          </label>
+          <input id="gasUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec"
+            class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-xs px-3.5 py-2 outline-none" />
         </div>
 
         <div class="space-y-2 text-sm text-slate-700">
@@ -75,7 +69,10 @@
             <h2 class="text-lg font-semibold text-slate-900">2. Hasil Rekap Ketersediaan</h2>
             <p class="text-xs text-slate-500">Hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong></p>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnSaveSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
+              Simpan ke Google Sheets
+            </button>
             <button id="btnCopy" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition">
               Salin Teks
             </button>
@@ -116,7 +113,7 @@
             <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
               <tr>
                 <td colspan="3" class="py-10 text-center text-slate-400">
-                  Belum ada data direkap. Pilih file PDF/CSV/TXT atau klik tombol Contoh di atas.
+                  Belum ada data direkap. Pilih file PDF/CSV/TXT atau tempel teks dokumen di kiri.
                 </td>
               </tr>
             </tbody>
@@ -132,28 +129,25 @@
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
 
-    const SAMPLE_SD = `1 1154 BEST EMOTION 1,000 ML
-2 1070 BODY MUSK 250 ML
-3 1038 BUTTON PINK 250 ML
-4 1155 CALF 500 ML
-5 001409 COCO VANILLA 500 ML
-38 001383 Plastik Klip Besar 1 BALL
-39 001385 Tas Villa Kecil 200 PCS
-40 001386 Tas Villa Sedang 200 PCS`;
-
-    const SAMPLE_INV = `1154 BEST EMOTION 1 | 1.000 | 3.000 | 3.000.000
-1070 BODY MUSK 2 | 250 | 2.000 | 500.000
-36 | 1832 PX 223 (VP Custom 15ml) | 48 | 8.000 | 384.000
-38 | Plastik Klip Besar 5 | 1 | 0 | 0`;
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxT1vKFnhhrATrkCGle6mp05qWqa02BeS5bEePAlxSjzPboqvdpBLiQbMGgdzeLL_dm/exec";
+    const STORAGE_GAS_KEY = "stock_toko_gas_url";
 
     let rowsData = [];
+    let currentFileName = "Input Manual";
 
     const fileInput = document.getElementById("fileInput");
     const fileLabel = document.getElementById("fileLabel");
     const rawInput = document.getElementById("rawInput");
+    const gasUrlInput = document.getElementById("gasUrlInput");
     const statusBox = document.getElementById("statusBox");
     const tableBody = document.getElementById("tableBody");
     const searchBox = document.getElementById("searchBox");
+    const btnSaveSheet = document.getElementById("btnSaveSheet");
+
+    gasUrlInput.value = localStorage.getItem(STORAGE_GAS_KEY) || DEFAULT_GAS_URL;
+    gasUrlInput.addEventListener("change", () => {
+      localStorage.setItem(STORAGE_GAS_KEY, gasUrlInput.value.trim());
+    });
 
     function setStatus(message, type = "info") {
       statusBox.classList.remove(
@@ -230,15 +224,14 @@
     function cleanName(raw) {
       return raw
         .replace(/\|/g, " ")
-        .replace(/^\d{1,3}\s+/, "")         // hapus nomor urut di depan
-        .replace(/\b\d{4,6}\b\s*/g, "")    // hapus kode produk 4-6 digit seperti 1154 atau 001409
-        .replace(/\s+\d{1,2}$/, "")        // hapus nomor urut di akhir
+        .replace(/^\d{1,3}\s+/, "")
+        .replace(/\b\d{4,6}\b\s*/g, "")
+        .replace(/\s+\d{1,2}$/, "")
         .replace(/\s+/g, " ")
         .trim();
     }
 
     function parseLineWithoutPipe(line) {
-      // Contoh: "1 1154 BEST EMOTION 1,000 ML" atau "38 001383 Plastik Klip Besar 1 BALL"
       const unitMatch = line.match(/^(.*?)\s+(\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)\s+(ML|PCS|BALL|GR|KG|BTL|BOX)$/i);
       if (unitMatch) {
         const prefix = unitMatch[1].trim();
@@ -249,7 +242,6 @@
         }
       }
 
-      // Fallback baris tanpa satuan di ujung tapi ada angka qty
       const tokens = line.split(/\s+/);
       const numIndices = [];
       tokens.forEach((tok, idx) => {
@@ -259,7 +251,6 @@
       });
 
       if (numIndices.length >= 2) {
-        // Umumnya index 0 = No urut, index 1 = Kode barang, index terakhir sebelum angka harga/jumlah = Qty
         const qtyIdx = numIndices[numIndices.length - 1] === tokens.length - 1 && numIndices.length >= 3
           ? numIndices[numIndices.length - 3]
           : numIndices[numIndices.length - 1];
@@ -292,7 +283,6 @@
         const line = r.trim();
         if (!line || isNoiseLine(line)) continue;
 
-        // Jika baris diawali nomor urut baru (misal "2 1070 BODY MUSK 250 ML"), tutup blok sebelumnya
         const startsNewRow = /^\d{1,3}\s+\d{3,6}\s+/.test(line) || line.includes("|");
         if (startsNewRow && buffer) {
           mergedBlocks.push(buffer);
@@ -439,6 +429,7 @@
       const file = e.target.files?.[0];
       if (!file) return;
       clearStatus();
+      currentFileName = file.name;
       fileLabel.textContent = `Memproses ${file.name}...`;
 
       try {
@@ -476,6 +467,9 @@
 
     document.getElementById("btnProcess").addEventListener("click", () => {
       clearStatus();
+      if (!fileInput.files?.length) {
+        currentFileName = "Input Manual";
+      }
       rowsData = parseDocumentText(rawInput.value);
       renderTable();
       if (rowsData.length > 0) {
@@ -485,31 +479,46 @@
       }
     });
 
-    document.getElementById("btnSampleA").addEventListener("click", () => {
+    btnSaveSheet.addEventListener("click", async () => {
       clearStatus();
-      rawInput.value = SAMPLE_SD;
-      fileLabel.textContent = "Contoh SD00029158 dimuat";
-      rowsData = parseDocumentText(SAMPLE_SD);
-      renderTable();
-      setStatus(`Contoh SD00029158 dimuat (${rowsData.length} item).`, "success");
-    });
+      const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
+      localStorage.setItem(STORAGE_GAS_KEY, gasUrl);
 
-    document.getElementById("btnSampleB").addEventListener("click", () => {
-      clearStatus();
-      rawInput.value = SAMPLE_INV;
-      fileLabel.textContent = "Contoh Invoice dimuat";
-      rowsData = parseDocumentText(SAMPLE_INV);
-      renderTable();
-      setStatus(`Contoh Invoice dimuat (${rowsData.length} item).`, "success");
-    });
+      if (!gasUrl) {
+        setStatus("Masukkan URL Google Apps Script Web App terlebih dahulu.", "warn");
+        return;
+      }
+      if (!rowsData.length) {
+        setStatus("Belum ada data rekap untuk disimpan ke Google Sheets.", "warn");
+        return;
+      }
 
-    document.getElementById("btnClear").addEventListener("click", () => {
-      clearStatus();
-      rawInput.value = "";
-      fileInput.value = "";
-      fileLabel.textContent = "PDF akan diekstrak dan langsung direkap";
-      rowsData = [];
-      renderTable();
+      btnSaveSheet.disabled = true;
+      btnSaveSheet.textContent = "Menyimpan...";
+
+      try {
+        const payload = {
+          namaFile: currentFileName,
+          items: rowsData.map((i) => ({ name: i.name, qty: i.qty }))
+        };
+
+        await fetch(gasUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        setStatus(
+          `Data (${rowsData.length} jenis barang) dikirim ke Google Sheets (Sheet1 & Sheet2).`,
+          "success"
+        );
+      } catch (err) {
+        setStatus(`Gagal menyimpan ke Google Sheets: ${err.message}`, "error");
+      } finally {
+        btnSaveSheet.disabled = false;
+        btnSaveSheet.textContent = "Simpan ke Google Sheets";
+      }
     });
 
     searchBox.addEventListener("input", renderTable);
