@@ -13,7 +13,7 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
       <h1 class="text-2xl font-bold text-slate-900">Rekap Ketersediaan Barang</h1>
       <p class="text-sm text-slate-500 mt-1">
-        Bagian 1 import dokumen, bagian 2 stok aktif (otomatis bertambah saat rekap baru & qty bisa diedit), bagian 3 riwayat per bulan & tanggal.
+        Bagian 1 import dokumen, bagian 2 stok aktif (edit qty, hapus barang habis, & tombol clear), bagian 3 riwayat bulan/tanggal & log barang habis/masuk lagi.
       </p>
     </div>
 
@@ -70,10 +70,13 @@
           <div>
             <h2 class="text-lg font-semibold text-slate-900">2. Hasil Rekap Ketersediaan (Stok Aktif)</h2>
             <p class="text-xs text-slate-500">
-              Sumber aktif: <span id="activeSourceText" class="font-semibold text-slate-700">Belum ada data</span> • Qty bisa diubah langsung
+              Sumber aktif: <span id="activeSourceText" class="font-semibold text-slate-700">Belum ada data</span> • Qty bisa diubah atau dihapus
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <button id="btnClearAll" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition">
+              Clear
+            </button>
             <button id="btnLoadSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
               Muat Stok Sheet1
             </button>
@@ -114,7 +117,7 @@
               <tr>
                 <th class="py-3 px-4 w-14">No</th>
                 <th class="py-3 px-4">Nama Barang</th>
-                <th class="py-3 px-4 text-right w-36">Qty</th>
+                <th class="py-3 px-4 text-right w-44">Qty & Aksi</th>
               </tr>
             </thead>
             <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
@@ -129,45 +132,119 @@
       </div>
     </div>
 
-    <!-- Bagian 3: Riwayat Rekap Sebelumnya (Bulan & Tanggal + Load) -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-900">3. Riwayat Rekap Tersimpan (Bulan & Tanggal)</h2>
-          <p class="text-xs text-slate-500">
-            Daftar rekap yang sudah pernah disimpan. Pilih bulan/tanggal lalu klik <strong>Load</strong> untuk menampilkannya ke bagian 2.
-          </p>
+    <!-- Bagian 3: Riwayat Rekap (Bulan & Tanggal + Load) & Rekapan Barang Habis / Masuk Lagi -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">3. Riwayat Rekap Tersimpan (Bulan & Tanggal)</h2>
+            <p class="text-xs text-slate-500">
+              Daftar rekap yang sudah pernah disimpan. Pilih bulan/tanggal lalu klik <strong>Load</strong> untuk menampilkannya ke bagian 2.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="filterMonth" class="rounded-lg border border-slate-300 text-xs px-3 py-1.5 bg-white text-slate-700 outline-none">
+              <option value="">Semua Bulan</option>
+            </select>
+            <button id="btnRefreshHistory" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
+              Refresh Riwayat
+            </button>
+          </div>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <select id="filterMonth" class="rounded-lg border border-slate-300 text-xs px-3 py-1.5 bg-white text-slate-700 outline-none">
-            <option value="">Semua Bulan</option>
-          </select>
-          <button id="btnRefreshHistory" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
-            Refresh Riwayat
-          </button>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+              <tr>
+                <th class="py-3 px-4">Bulan</th>
+                <th class="py-3 px-4">Tanggal & Waktu</th>
+                <th class="py-3 px-4">Sumber / File</th>
+                <th class="py-3 px-4 text-right">Jenis</th>
+                <th class="py-3 px-4 text-right">Total Qty</th>
+                <th class="py-3 px-4 text-right w-28">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody" class="divide-y divide-slate-100 text-sm">
+              <tr>
+                <td colspan="6" class="py-8 text-center text-slate-400">
+                  Belum ada riwayat dimuat. Klik "Refresh Riwayat" atau simpan rekap ke Google Sheets.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div class="overflow-x-auto border border-slate-200 rounded-xl">
-        <table class="w-full text-left border-collapse">
-          <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
-            <tr>
-              <th class="py-3 px-4">Bulan</th>
-              <th class="py-3 px-4">Tanggal & Waktu</th>
-              <th class="py-3 px-4">Sumber / File</th>
-              <th class="py-3 px-4 text-right">Jenis</th>
-              <th class="py-3 px-4 text-right">Total Qty</th>
-              <th class="py-3 px-4 text-right w-28">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="historyBody" class="divide-y divide-slate-100 text-sm">
-            <tr>
-              <td colspan="6" class="py-8 text-center text-slate-400">
-                Belum ada riwayat dimuat. Klik "Refresh Riwayat" atau simpan rekap ke Google Sheets.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Rekapan Barang Habis (Tanggal Habis) -->
+      <div class="pt-4 border-t border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-base font-semibold text-slate-900">Rekapan Barang Habis</h3>
+            <p class="text-xs text-slate-500">
+              Mencatat barang yang dihapus karena habis beserta <strong>Tanggal Habis</strong> dan update bila sudah masuk lagi.
+            </p>
+          </div>
+          <button id="btnClearOutOfStock" type="button" class="px-3 py-1 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600 transition self-start sm:self-auto">
+            Bersihkan Rekapan Habis
+          </button>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+              <tr>
+                <th class="py-3 px-4">Nama Barang</th>
+                <th class="py-3 px-4">Tanggal Habis</th>
+                <th class="py-3 px-4">Tanggal Masuk Lagi</th>
+                <th class="py-3 px-4 text-right">Qty Masuk Lagi</th>
+                <th class="py-3 px-4 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody id="outOfStockBody" class="divide-y divide-slate-100 text-sm">
+              <tr>
+                <td colspan="5" class="py-6 text-center text-slate-400">
+                  Belum ada barang habis yang tercatat.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Rekapan Masuk Lagi (Tanggal Masuk Lagi) -->
+      <div class="pt-4 border-t border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-base font-semibold text-slate-900">Rekapan Barang Masuk Lagi</h3>
+            <p class="text-xs text-slate-500">
+              Mencatat <strong>Tanggal Masuk Lagi</strong> dan jumlah stok baru untuk barang yang sebelumnya habis.
+            </p>
+          </div>
+          <button id="btnClearRestocked" type="button" class="px-3 py-1 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600 transition self-start sm:self-auto">
+            Bersihkan Rekapan Masuk Lagi
+          </button>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+              <tr>
+                <th class="py-3 px-4">Nama Barang</th>
+                <th class="py-3 px-4">Tanggal Masuk Lagi</th>
+                <th class="py-3 px-4 text-right">Qty Masuk Lagi</th>
+                <th class="py-3 px-4">Tanggal Habis Sebelumnya</th>
+                <th class="py-3 px-4">Sumber / File</th>
+              </tr>
+            </thead>
+            <tbody id="restockedBody" class="divide-y divide-slate-100 text-sm">
+              <tr>
+                <td colspan="5" class="py-6 text-center text-slate-400">
+                  Belum ada barang habis yang masuk lagi.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -182,9 +259,13 @@
     const STORAGE_GAS_KEY = "stock_toko_gas_url";
     const STORAGE_REKAP_KEY = "stock_toko_rekap_aktif";
     const STORAGE_HISTORY_KEY = "stock_toko_riwayat_lokal";
+    const STORAGE_OOS_KEY = "stock_toko_barang_habis";
+    const STORAGE_RESTOCK_KEY = "stock_toko_masuk_lagi";
 
     let rowsData = [];
     let historyData = [];
+    let outOfStockData = [];
+    let restockedLogData = [];
     let currentFileName = "Input Manual";
 
     const fileInput = document.getElementById("fileInput");
@@ -194,12 +275,17 @@
     const statusBox = document.getElementById("statusBox");
     const tableBody = document.getElementById("tableBody");
     const historyBody = document.getElementById("historyBody");
+    const outOfStockBody = document.getElementById("outOfStockBody");
+    const restockedBody = document.getElementById("restockedBody");
     const filterMonth = document.getElementById("filterMonth");
     const searchBox = document.getElementById("searchBox");
     const activeSourceText = document.getElementById("activeSourceText");
     const btnSaveSheet = document.getElementById("btnSaveSheet");
     const btnLoadSheet = document.getElementById("btnLoadSheet");
     const btnRefreshHistory = document.getElementById("btnRefreshHistory");
+    const btnClearAll = document.getElementById("btnClearAll");
+    const btnClearOutOfStock = document.getElementById("btnClearOutOfStock");
+    const btnClearRestocked = document.getElementById("btnClearRestocked");
 
     const savedGasUrl = localStorage.getItem(STORAGE_GAS_KEY);
     if (!savedGasUrl || savedGasUrl !== DEFAULT_GAS_URL) {
@@ -213,16 +299,168 @@
       localStorage.setItem(STORAGE_GAS_KEY, val);
     });
 
+    function formatNowDate() {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, "0");
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yyyy = now.getFullYear();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const min = String(now.getMinutes()).padStart(2, "0");
+      return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+    }
+
     function saveLocalState() {
       localStorage.setItem(STORAGE_REKAP_KEY, JSON.stringify({
         fileName: currentFileName,
         items: rowsData
       }));
-      activeSourceText.textContent = currentFileName;
+      activeSourceText.textContent = rowsData.length ? currentFileName : "Belum ada data";
     }
 
     function saveLocalHistory() {
       localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(historyData));
+    }
+
+    function saveLocalOutOfStock() {
+      localStorage.setItem(STORAGE_OOS_KEY, JSON.stringify(outOfStockData));
+    }
+
+    function saveLocalRestocked() {
+      localStorage.setItem(STORAGE_RESTOCK_KEY, JSON.stringify(restockedLogData));
+    }
+
+    function addToOutOfStock(itemName) {
+      const clean = String(itemName || "").trim();
+      if (!clean) return;
+      const nowStr = formatNowDate();
+      const existingIdx = outOfStockData.findIndex(
+        (o) => String(o.name || "").trim().toLowerCase() === clean.toLowerCase()
+      );
+      const entry = {
+        name: clean,
+        tanggalHabis: nowStr,
+        tanggalMasukLagi: "-",
+        qtyMasukLagi: 0,
+        status: "Habis"
+      };
+      if (existingIdx !== -1) {
+        outOfStockData.splice(existingIdx, 1);
+      }
+      outOfStockData.unshift(entry);
+      saveLocalOutOfStock();
+      renderOutOfStock();
+      syncLogsToSheet();
+    }
+
+    function markRestockedItems(incomingItems) {
+      if (!Array.isArray(incomingItems) || !incomingItems.length || !outOfStockData.length) return;
+      const nowStr = formatNowDate();
+      let changed = false;
+
+      for (const inc of incomingItems) {
+        const incKey = String(inc.name || "").trim().toLowerCase();
+        const incQty = Math.max(0, Number(inc.qty) || 0);
+        if (!incKey) continue;
+
+        for (const oos of outOfStockData) {
+          if (String(oos.name || "").trim().toLowerCase() === incKey && oos.status === "Habis") {
+            const prevHabis = oos.tanggalHabis || "-";
+            oos.tanggalMasukLagi = nowStr;
+            oos.qtyMasukLagi = incQty;
+            oos.status = "Masuk Lagi";
+
+            restockedLogData.unshift({
+              name: oos.name,
+              tanggalMasukLagi: nowStr,
+              qtyMasukLagi: incQty,
+              tanggalHabisSebelumnya: prevHabis,
+              namaFile: currentFileName
+            });
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) {
+        saveLocalOutOfStock();
+        saveLocalRestocked();
+        renderOutOfStock();
+        renderRestocked();
+        syncLogsToSheet();
+      }
+    }
+
+    async function syncLogsToSheet() {
+      const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
+      if (!gasUrl) return;
+      try {
+        await fetch(gasUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "sync_logs",
+            outOfStock: outOfStockData,
+            restockedLog: restockedLogData
+          })
+        });
+      } catch (_) {}
+    }
+
+    function renderOutOfStock() {
+      if (!outOfStockData.length) {
+        outOfStockBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-6 text-center text-slate-400">
+              Belum ada barang habis yang tercatat.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      outOfStockBody.innerHTML = outOfStockData
+        .map((o) => {
+          const isRestocked = o.status === "Masuk Lagi";
+          const badgeClass = isRestocked
+            ? "bg-emerald-100 text-emerald-800"
+            : "bg-rose-100 text-rose-800";
+          return `
+            <tr class="hover:bg-slate-50">
+              <td class="py-2.5 px-4 font-medium text-slate-900">${escapeHtml(o.name)}</td>
+              <td class="py-2.5 px-4 text-slate-700">${escapeHtml(o.tanggalHabis || "-")}</td>
+              <td class="py-2.5 px-4 text-slate-800 font-medium">${escapeHtml(o.tanggalMasukLagi || "-")}</td>
+              <td class="py-2.5 px-4 text-right font-semibold text-indigo-700">${isRestocked ? fmtNum(o.qtyMasukLagi || 0) : "-"}</td>
+              <td class="py-2.5 px-4 text-right">
+                <span class="inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${badgeClass}">
+                  ${escapeHtml(o.status || "Habis")}
+                </span>
+              </td>
+            </tr>`;
+        })
+        .join("");
+    }
+
+    function renderRestocked() {
+      if (!restockedLogData.length) {
+        restockedBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-6 text-center text-slate-400">
+              Belum ada barang habis yang masuk lagi.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      restockedBody.innerHTML = restockedLogData
+        .map((r) => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-medium text-slate-900">${escapeHtml(r.name)}</td>
+            <td class="py-2.5 px-4 font-medium text-emerald-700">${escapeHtml(r.tanggalMasukLagi || "-")}</td>
+            <td class="py-2.5 px-4 text-right font-semibold text-indigo-700">${fmtNum(r.qtyMasukLagi || 0)}</td>
+            <td class="py-2.5 px-4 text-slate-600">${escapeHtml(r.tanggalHabisSebelumnya || "-")}</td>
+            <td class="py-2.5 px-4 text-slate-600">${escapeHtml(r.namaFile || "-")}</td>
+          </tr>`)
+        .join("");
     }
 
     function recordHistoryEntry(fileName, items) {
@@ -231,17 +469,11 @@
         "Januari", "Februari", "Maret", "April", "Mei", "Juni",
         "Juli", "Agustus", "September", "Oktober", "November", "Desember"
       ];
-      const dd = String(now.getDate()).padStart(2, "0");
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const yyyy = now.getFullYear();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const min = String(now.getMinutes()).padStart(2, "0");
-
       const totalQty = items.reduce((acc, i) => acc + (Number(i.qty) || 0), 0);
       historyData.unshift({
         id: "local-" + Date.now(),
-        bulanLabel: `${monthNames[now.getMonth()]} ${yyyy}`,
-        tanggalLabel: `${dd}/${mm}/${yyyy} ${hh}:${min}`,
+        bulanLabel: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+        tanggalLabel: formatNowDate(),
         namaFile: fileName,
         totalJenis: items.length,
         totalQty: totalQty,
@@ -260,7 +492,7 @@
           if (Array.isArray(parsed.items)) {
             rowsData = parsed.items;
             currentFileName = parsed.fileName || "Rekap Tersimpan";
-            activeSourceText.textContent = currentFileName;
+            activeSourceText.textContent = rowsData.length ? currentFileName : "Belum ada data";
             renderTable();
           }
         }
@@ -271,6 +503,22 @@
             historyData = parsedHist;
             populateMonthFilter();
             renderHistory();
+          }
+        }
+        const rawOos = localStorage.getItem(STORAGE_OOS_KEY);
+        if (rawOos) {
+          const parsedOos = JSON.parse(rawOos);
+          if (Array.isArray(parsedOos)) {
+            outOfStockData = parsedOos;
+            renderOutOfStock();
+          }
+        }
+        const rawRestock = localStorage.getItem(STORAGE_RESTOCK_KEY);
+        if (rawRestock) {
+          const parsedRestock = JSON.parse(rawRestock);
+          if (Array.isArray(parsedRestock)) {
+            restockedLogData = parsedRestock;
+            renderRestocked();
           }
         }
       } catch (_) {}
@@ -552,8 +800,14 @@
             <td class="py-2.5 px-4 text-slate-500">${idx + 1}</td>
             <td class="py-2.5 px-4 font-medium text-slate-900">${escapeHtml(item.name)}</td>
             <td class="py-2.5 px-4 text-right">
-              <input type="number" min="0" step="1" data-idx="${realIndex}" value="${Number(item.qty) || 0}"
-                class="qty-input w-24 text-right font-semibold text-indigo-700 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-lg px-2 py-1 outline-none" />
+              <div class="inline-flex items-center justify-end gap-2">
+                <input type="number" min="0" step="1" data-idx="${realIndex}" value="${Number(item.qty) || 0}"
+                  class="qty-input w-20 text-right font-semibold text-indigo-700 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-lg px-2 py-1 outline-none" />
+                <button type="button" data-del="${realIndex}" title="Hapus barang habis"
+                  class="btn-del-item px-2 py-1 text-xs font-semibold rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition">
+                  Hapus
+                </button>
+              </div>
             </td>
           </tr>`
         )
@@ -571,6 +825,19 @@
               : rowsData;
             updateSummary(currentFiltered);
           }
+        });
+      });
+
+      tableBody.querySelectorAll(".btn-del-item").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const idx = Number(e.target.dataset.del);
+          const removed = rowsData[idx];
+          if (!removed) return;
+          rowsData.splice(idx, 1);
+          saveLocalState();
+          addToOutOfStock(removed.name);
+          renderTable();
+          setStatus(`"${removed.name}" dihapus dari stok aktif dan dicatat di Rekapan Barang Habis.`, "info");
         });
       });
     }
@@ -712,6 +979,7 @@
         return;
       }
 
+      markRestockedItems(parsed);
       const shouldAdd = document.getElementById("addToExisting").checked;
       rowsData = mergeIncomingIntoStock(rowsData, parsed, shouldAdd);
       saveLocalState();
@@ -725,6 +993,48 @@
       );
     });
 
+    btnClearAll.addEventListener("click", async () => {
+      clearStatus();
+      rowsData = [];
+      currentFileName = "Input Manual";
+      rawInput.value = "";
+      fileInput.value = "";
+      fileLabel.textContent = "Teks dimuat dulu, klik Proses Rekap untuk menambah ke stok";
+      localStorage.removeItem(STORAGE_REKAP_KEY);
+      renderTable();
+      activeSourceText.textContent = "Belum ada data";
+
+      const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
+      if (gasUrl) {
+        try {
+          await fetch(gasUrl, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "clear" })
+          });
+        } catch (_) {}
+      }
+
+      setStatus("Data stok aktif dibersihkan.", "success");
+    });
+
+    btnClearOutOfStock.addEventListener("click", () => {
+      outOfStockData = [];
+      saveLocalOutOfStock();
+      renderOutOfStock();
+      syncLogsToSheet();
+      setStatus("Rekapan barang habis dibersihkan.", "info");
+    });
+
+    btnClearRestocked.addEventListener("click", () => {
+      restockedLogData = [];
+      saveLocalRestocked();
+      renderRestocked();
+      syncLogsToSheet();
+      setStatus("Rekapan barang masuk lagi dibersihkan.", "info");
+    });
+
     async function fetchHistoryFromSheet() {
       const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
       if (!gasUrl) return;
@@ -736,6 +1046,16 @@
           saveLocalHistory();
           populateMonthFilter();
           renderHistory();
+        }
+        if (Array.isArray(data.outOfStock)) {
+          outOfStockData = data.outOfStock;
+          saveLocalOutOfStock();
+          renderOutOfStock();
+        }
+        if (Array.isArray(data.restockedLog)) {
+          restockedLogData = data.restockedLog;
+          saveLocalRestocked();
+          renderRestocked();
         }
         return data;
       }
@@ -810,7 +1130,9 @@
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
             namaFile: currentFileName,
-            items: cleanItems
+            items: cleanItems,
+            outOfStock: outOfStockData,
+            restockedLog: restockedLogData
           })
         });
 
