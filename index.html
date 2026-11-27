@@ -137,42 +137,9 @@
 1070 BODY MUSK 2 | 250 | 2.000 | 500.000
 1038 BUTTON PINK 3 | 250 | 2.500 | 625.000
 1155 CALF 4 | 500 | 4.000 | 2.000.000
-1409 COCO VANILLA 5 | 500 | 1.500 | 750.000
-1403 DARIEL 6 | 250 | 3.000 | 750.000
-2381 FLOREIA 7 | 250 | 4.000 | 1.000.000
-2368 G.VOILE 8 | 250 | 3.000 | 750.000
-2209 GOLD DIGGER 9 | 250 | 2.500 | 625.000
-1506 GULTY MAN 10 | 250 | 2.500 | 625.000
-1084 KABILLIE 11 | 500 | 2.000 | 1.000.000
-1658 LONE ENGLISH 12 | 250 | 4.000 | 1.000.000
-1224 LULUZUKU 13 | 250 | 2.000 | 500.000
-2176 MIAMI 82 14 | 250 | 2.000 | 500.000
-2367 MIDNIGHT ROSE 15 | 500 | 2.500 | 1.250.000
-1597 MISSING BLOOM 16 | 100 | 4.000 | 400.000
-2392 MYKO ROYAL 17 | 500 | 3.000 | 1.500.000
-1413 NEW YORK MAN 18 | 250 | 2.000 | 500.000
-2008 NIGHT IVY 19 | 500 | 1.500 | 750.000
-2415 REBEL HOUR'S PRM 20 | 500 | 5.000 | 2.500.000
-1508 RED BACARA 21 | 500 | 3.000 | 1.500.000
-1020 RED DESERT 22 | 250 | 3.000 | 750.000
-1436 ROMAN WISH 23 | 1.000 | 2.000 | 2.000.000
-1004 ROSY APRILLA 24 | 500 | 2.500 | 1.250.000
-1500 SALSAVAGE 25 | 1.000 | 3.500 | 3.500.000
-1700 SHIFFON 26 | 1.000 | 2.000 | 2.000.000
-1757 SLAVINA 27 | 250 | 1.500 | 375.000
-1182 STRAWBERRY TOTAL 28 | 250 | 1.500 | 375.000
-1336 STYLISH 29 | 250 | 3.000 | 750.000
-2332 V.VALEN 30 | 250 | 1.500 | 375.000
-1923 WHY YOU 31 | 1.000 | 4.000 | 4.000.000
-20028 CITRA 20 (PX 89) 32 | 24 | 8.000 | 192.000
-20051 CITRA 30 (PX 47) 33 | 36 | 10.000 | 360.000
-20042 CITRA 60 (CASSA TRANS 60) 34 | 24 | 10.000 | 240.000
-2062 PENNY UNGU 30ml 35 | 24 | 10.000 | 240.000
-1832 PX 223 (VP Custom 15ml) 36 | 48 | 8.000 | 384.000
-1956 PX 346 (Semi Press 30m) 37 | 24 | 10.000 | 240.000
-Plastik Klip Besar 38 | 5 | 1 | 0 | 0
-Tas Villa Kecil 39 | 7 | 200 | 0 | 0
-Tas Villa Sedang 40 | 8 | 200 | 0 | 0`;
+36 | 1832 PX 223 (VP Custom 15ml) | 48 | 8.000 | 384.000
+38 | Plastik Klip Besar 5 | 1 | 0 | 0
+39 | Tas Villa Kecil 7 | 200 | 0 | 0`;
 
     let currentItems = [];
 
@@ -183,7 +150,7 @@ Tas Villa Sedang 40 | 8 | 200 | 0 | 0`;
     const searchInput = document.getElementById("searchInput");
 
     function parseQtyNumber(str) {
-      if (!str) return 0;
+      if (str === undefined || str === null) return 0;
       const cleaned = String(str).trim().replace(/\./g, "").replace(/,/g, ".");
       const num = Number(cleaned);
       return Number.isFinite(num) ? num : 0;
@@ -198,73 +165,127 @@ Tas Villa Sedang 40 | 8 | 200 | 0 | 0`;
         lower.includes("office jl.") ||
         lower.includes("kepada yth") ||
         lower.includes("toko cibaduyut") ||
+        lower.includes("bandung") ||
         lower.includes("regional 1") ||
         lower.includes("perhatian") ||
         lower.includes("invoice") ||
+        lower.includes("27 november") ||
         lower.includes("adm gudang") ||
         lower.includes("email:") ||
         lower.includes("periksa penerimaan") ||
         lower.includes("komplain tidak diterima") ||
-        lower.includes("nama barang") ||
+        (lower.includes("nama barang") && lower.includes("qty")) ||
         lower.includes("items terkirim") ||
         lower.includes("jumlah nominal") ||
         lower.includes("kepala gudang") ||
         lower === "checker" ||
         lower === "driver" ||
         lower === "rp" ||
-        /^[()|\s]+$/.test(line)
+        /^[()|\s]+$/.test(line) ||
+        /^\d{1,3}(\.\d{3})*$/.test(line.trim())
       );
     }
 
     function cleanItemName(rawName) {
-      let name = rawName
+      return rawName
         .replace(/\|/g, " ")
-        .replace(/\b\d{1,3}\b\s*$/, "") // hapus nomor urut di ujung jika ada
-        .replace(/^\d{3,5}\s+/, "")   // hapus kode barang di depan jika ada
+        .replace(/^\d{1,3}\s+/, "")         // hapus nomor urut di depan jika berdiri sendiri
+        .replace(/\b\d{4,5}\b\s*/g, "")    // hapus kode barang 4-5 digit seperti 1154, 20028
+        .replace(/\s+\d{1,2}$/, "")        // hapus nomor urut di akhir
         .replace(/\s+/g, " ")
         .trim();
-      return name;
+    }
+
+    function extractCandidateFromLine(line) {
+      if (isIgnoredLine(line)) return null;
+
+      // Jika baris memakai format dengan '|'
+      if (line.includes("|")) {
+        const parts = line.split("|").map((p) => p.trim()).filter(Boolean);
+        // Cari bagian yang mengandung huruf sebagai nama barang
+        const namePartIdx = parts.findIndex((p) => /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(p));
+        if (namePartIdx === -1) return null;
+
+        let namePart = parts[namePartIdx];
+        let qty = 0;
+
+        // Jika ada angka menempel di akhir namePart sebelum '|', cek apakah itu no urut atau qty
+        const trailingNumMatch = namePart.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)$/);
+        if (trailingNumMatch) {
+          namePart = trailingNumMatch[1];
+        }
+
+        // Ambil angka pertama setelah bagian nama barang sebagai Qty
+        for (let i = namePartIdx + 1; i < parts.length; i++) {
+          if (/^\d{1,3}(\.\d{3})*(?:,\d+)?$/.test(parts[i])) {
+            qty = parseQtyNumber(parts[i]);
+            break;
+          }
+        }
+
+        const cleanName = cleanItemName(namePart);
+        if (cleanName && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(cleanName)) {
+          return { name: cleanName, qty };
+        }
+        return null;
+      }
+
+      // Fallback untuk baris tanpa '|' (misal hasil paste atau CSV/TXT)
+      const tokens = line.split(/\s+/);
+      const numIndices = [];
+      tokens.forEach((tok, idx) => {
+        if (/^\d{1,3}(\.\d{3})*(?:,\d+)?$/.test(tok)) {
+          numIndices.push(idx);
+        }
+      });
+
+      if (numIndices.length >= 2) {
+        // Umumnya Qty adalah angka pertama setelah teks nama barang
+        const qtyIdx = numIndices.find((idx) => idx > 0) ?? numIndices[0];
+        const qty = parseQtyNumber(tokens[qtyIdx]);
+        const nameTokens = tokens.filter((_, idx) => idx !== qtyIdx);
+        const cleanName = cleanItemName(nameTokens.join(" "));
+        if (cleanName && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(cleanName)) {
+          return { name: cleanName, qty };
+        }
+      }
+
+      return null;
     }
 
     function parseInvoiceText(text) {
-      // Normalisasi baris terpecah seperti "36\n | 1832 PX 223..." atau "1154\nBEST EMOTION\n1 | 1.000..."
       const normalized = text
         .replace(/\r\n/g, "\n")
         .replace(/\n\s*\|\s*/g, " | ")
-        .replace(/(\d+)\s*\n\s*([A-Za-zÀ-ÖØ-öø-ÿ])/g, "$1 $2");
+        .replace(/\s*\|\s*\n/g, " | ");
 
-      const lines = normalized.split("\n");
-      const parsed = [];
+      // Gabungkan baris yang terpotong jika baris berikutnya tidak diawali angka baru/header
+      const rawLines = normalized.split("\n");
+      const mergedLines = [];
 
-      for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (isIgnoredLine(line)) continue;
+      for (const rLine of rawLines) {
+        const trimmed = rLine.trim();
+        if (!trimmed) continue;
 
-        // Pola baris dengan pemisah '|' (format invoice: Nama/Kode/No | Qty | Harga | Jumlah)
-        if (line.includes("|")) {
-          const parts = line.split("|").map((p) => p.trim()).filter((p) => p !== "");
-          if (parts.length >= 2) {
-            const leftPart = parts[0];
-            // Qty biasanya berada di kolom ke-2 setelah '|' (indeks 1), atau angka pertama setelah '|'
-            const qtyCandidate = parts[1];
-            const qty = parseQtyNumber(qtyCandidate);
+        const prev = mergedLines[mergedLines.length - 1];
+        const startsWithPipeOrNumber = /^(\|\s*)?\d{1,5}(\s|\||$)/.test(trimmed);
+        const prevLooksIncomplete =
+          prev &&
+          !prev.includes("|") &&
+          !/\d{1,3}(\.\d{3})*/.test(prev) &&
+          !startsWithPipeOrNumber;
 
-            // Jika kolom kiri hanya angka/kode dan kolom ke-2 berupa nama barang (seperti "38 | Plastik Klip Besar")
-            if (/^\d+$/.test(leftPart) && /[A-Za-z]/.test(qtyCandidate)) {
-              const name = cleanItemName(qtyCandidate);
-              const altQty = parts[2] ? parseQtyNumber(parts[2]) : 0;
-              if (name) parsed.push({ name, qty: altQty });
-              continue;
-            }
-
-            // Buang angka no urut tunggal di akhir leftPart (misal "BEST EMOTION 1" -> "BEST EMOTION")
-            let name = leftPart.replace(/\s+\d{1,3}$/, "");
-            name = cleanItemName(name);
-            if (name && /[A-Za-z]/.test(name)) {
-              parsed.push({ name, qty });
-            }
-          }
+        if (prevLooksIncomplete) {
+          mergedLines[mergedLines.length - 1] = `${prev} ${trimmed}`;
+        } else {
+          mergedLines.push(trimmed);
         }
+      }
+
+      const parsed = [];
+      for (const line of mergedLines) {
+        const item = extractCandidateFromLine(line);
+        if (item) parsed.push(item);
       }
 
       const mergeDup = document.getElementById("mergeDuplicates").checked;
@@ -345,14 +366,15 @@ Tas Villa Sedang 40 | 8 | 200 | 0 | 0`;
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const content = await page.getTextContent();
-        // Kelompokkan item teks berdasarkan koordinat Y agar baris tabel terbaca rapi
         const rows = new Map();
+
         for (const item of content.items) {
           if (!item.str || !item.str.trim()) continue;
-          const y = Math.round(item.transform[5] / 4) * 4;
+          const y = Math.round(item.transform[5] / 5) * 5;
           if (!rows.has(y)) rows.set(y, []);
           rows.get(y).push({ x: item.transform[4], str: item.str.trim() });
         }
+
         const sortedYs = Array.from(rows.keys()).sort((a, b) => b - a);
         for (const y of sortedYs) {
           const lineItems = rows.get(y).sort((a, b) => a.x - b.x).map((i) => i.str);
