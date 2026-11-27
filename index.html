@@ -40,7 +40,7 @@
         <label class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/60">
           <input id="fileInput" type="file" accept=".pdf,.csv,.txt" class="hidden" />
           <div class="text-sm font-medium text-indigo-600">Pilih File PDF, CSV, atau TXT</div>
-          <div id="fileLabel" class="text-xs text-slate-500 mt-1">PDF akan diekstrak otomatis ke teks di bawah</div>
+          <div id="fileLabel" class="text-xs text-slate-500 mt-1">PDF akan diekstrak dan langsung direkap</div>
         </label>
 
         <div>
@@ -132,21 +132,19 @@
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
 
-    const SAMPLE_SD = `1 | 1154 | BEST EMOTION | 1,000 | ML
-2 | 1070 | BODY MUSK | 250 | ML
-3 | 1038 | BUTTON PINK | 250 | ML
-4 | 1155 | CALF | 500 | ML
-5 | 001409 | COCO VANILLA | 500 | ML
-38 | 001383 | Plastik Klip Besar | 1 | BALL
-39 | 001385 | Tas Villa Kecil | 200 | PCS
-40 | 001386 | Tas Villa Sedang | 200 | PCS`;
+    const SAMPLE_SD = `1 1154 BEST EMOTION 1,000 ML
+2 1070 BODY MUSK 250 ML
+3 1038 BUTTON PINK 250 ML
+4 1155 CALF 500 ML
+5 001409 COCO VANILLA 500 ML
+38 001383 Plastik Klip Besar 1 BALL
+39 001385 Tas Villa Kecil 200 PCS
+40 001386 Tas Villa Sedang 200 PCS`;
 
     const SAMPLE_INV = `1154 BEST EMOTION 1 | 1.000 | 3.000 | 3.000.000
 1070 BODY MUSK 2 | 250 | 2.000 | 500.000
-1038 BUTTON PINK 3 | 250 | 2.500 | 625.000
 36 | 1832 PX 223 (VP Custom 15ml) | 48 | 8.000 | 384.000
-38 | Plastik Klip Besar 5 | 1 | 0 | 0
-39 | Tas Villa Kecil 7 | 200 | 0 | 0`;
+38 | Plastik Klip Besar 5 | 1 | 0 | 0`;
 
     let rowsData = [];
 
@@ -200,18 +198,21 @@
     function isNoiseLine(line) {
       const l = line.toLowerCase().trim();
       if (!l || l === "|" || l === ":") return true;
+      if (/^halaman\s+\d+\s+dari\s+\d+$/i.test(l)) return true;
+      if (/^tanggal\s*:/i.test(l) || /^operator\s*:/i.test(l) || /^toko\s*:/i.test(l) || /^keterangan\s+/i.test(l)) return true;
       const exactIgnore = [
+        "no kode nama produk qty satuan",
         "no", "code", "kode", "nama barang", "nama produk", "qty", "harga", "jumlah", "satuan",
         "checker", "kepala gudang penerima", "driver", "rp",
         "beecloud", "villa parfum", "parfum refill specialist", "regional 1", "perhatian", "invoice",
-        "stok keluar", "sd00029158", "tanggal", "operator", "toko", "rizky", "vp. bdgcbd",
-        "23 november 2026", "27 november 2026"
+        "stok keluar", "sd00029158", "tanggal", "operator", "toko", "rizky", "vp. bdgcbd", "vp. bdg - cbd"
       ];
       if (exactIgnore.includes(l)) return true;
       if (/^[()|\s]+$/.test(l)) return true;
       if (
         l.includes("jl. mekar utama") ||
         l.includes("komplek istana mekarwangi") ||
+        l.includes("moh.toha") ||
         l.includes("moh. toha") ||
         l.includes("kepada yth") ||
         l.includes("adm gudang") ||
@@ -229,18 +230,52 @@
     function cleanName(raw) {
       return raw
         .replace(/\|/g, " ")
-        .replace(/^\d{1,3}\s+/, "")
-        .replace(/\b\d{4,6}\b\s*/g, "")
-        .replace(/\s+\d{1,2}$/, "")
+        .replace(/^\d{1,3}\s+/, "")         // hapus nomor urut di depan
+        .replace(/\b\d{4,6}\b\s*/g, "")    // hapus kode produk 4-6 digit seperti 1154 atau 001409
+        .replace(/\s+\d{1,2}$/, "")        // hapus nomor urut di akhir
         .replace(/\s+/g, " ")
         .trim();
     }
 
-    function parseDocumentText(text) {
-      if (!text || !text.trim()) return [];
-      if (isRawPdfBinary(text)) {
-        return [];
+    function parseLineWithoutPipe(line) {
+      // Contoh: "1 1154 BEST EMOTION 1,000 ML" atau "38 001383 Plastik Klip Besar 1 BALL"
+      const unitMatch = line.match(/^(.*?)\s+(\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)\s+(ML|PCS|BALL|GR|KG|BTL|BOX)$/i);
+      if (unitMatch) {
+        const prefix = unitMatch[1].trim();
+        const qty = parseQty(unitMatch[2]);
+        const name = cleanName(prefix);
+        if (name && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(name) && !isNoiseLine(name)) {
+          return { name, qty };
+        }
       }
+
+      // Fallback baris tanpa satuan di ujung tapi ada angka qty
+      const tokens = line.split(/\s+/);
+      const numIndices = [];
+      tokens.forEach((tok, idx) => {
+        if (/^\d{1,3}(?:[.,]\d{3})*(?:,\d+)?$/.test(tok)) {
+          numIndices.push(idx);
+        }
+      });
+
+      if (numIndices.length >= 2) {
+        // Umumnya index 0 = No urut, index 1 = Kode barang, index terakhir sebelum angka harga/jumlah = Qty
+        const qtyIdx = numIndices[numIndices.length - 1] === tokens.length - 1 && numIndices.length >= 3
+          ? numIndices[numIndices.length - 3]
+          : numIndices[numIndices.length - 1];
+        const qty = parseQty(tokens[qtyIdx]);
+        const nameTokens = tokens.filter((_, idx) => idx !== qtyIdx);
+        const name = cleanName(nameTokens.join(" "));
+        if (name && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(name) && !isNoiseLine(name)) {
+          return { name, qty };
+        }
+      }
+
+      return null;
+    }
+
+    function parseDocumentText(text) {
+      if (!text || !text.trim() || isRawPdfBinary(text)) return [];
 
       const lines = text
         .replace(/\r\n/g, "\n")
@@ -248,7 +283,6 @@
         .map((s) => s.trim())
         .filter((s) => !isNoiseLine(s));
 
-      // Gabungkan potongan baris yang terpisah sebelum/sesudah '|'
       const normalized = lines.join("\n").replace(/\n\s*\|\s*/g, " | ").replace(/\s*\|\s*\n/g, " | ");
       const rawRows = normalized.split("\n");
       const mergedBlocks = [];
@@ -257,10 +291,12 @@
       for (const r of rawRows) {
         const line = r.trim();
         if (!line || isNoiseLine(line)) continue;
-        if (line.includes("|")) {
-          buffer = buffer ? `${buffer} ${line}` : line;
+
+        // Jika baris diawali nomor urut baru (misal "2 1070 BODY MUSK 250 ML"), tutup blok sebelumnya
+        const startsNewRow = /^\d{1,3}\s+\d{3,6}\s+/.test(line) || line.includes("|");
+        if (startsNewRow && buffer) {
           mergedBlocks.push(buffer);
-          buffer = "";
+          buffer = line;
         } else {
           buffer = buffer ? `${buffer} ${line}` : line;
         }
@@ -270,36 +306,40 @@
       const extracted = [];
 
       for (const block of mergedBlocks) {
-        if (!block.includes("|") || isNoiseLine(block)) continue;
-        const cols = block.split("|").map((c) => c.trim()).filter(Boolean);
+        if (isNoiseLine(block)) continue;
 
-        // Pola 1: format stok keluar [No, Kode, Nama Produk, Qty, Satuan]
-        const unitIdx = cols.findIndex((c) => /^(ml|pcs|ball|gr|kg|btl|box)$/i.test(c));
-        if (unitIdx >= 2) {
-          const qty = parseQty(cols[unitIdx - 1]);
-          const name = cleanName(cols[unitIdx - 2]);
-          if (name && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(name) && !isNoiseLine(name)) {
-            extracted.push({ name, qty });
-            continue;
-          }
-        }
-
-        // Pola 2: format invoice / baris ber-pipe umum
-        const nameIdx = cols.findIndex((c) => /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(c) && !/^(ml|pcs|ball)$/i.test(c));
-        if (nameIdx !== -1) {
-          const name = cleanName(cols[nameIdx].replace(/^(.*?)\s+\d{1,2}$/, "$1"));
-          let qty = 0;
-          for (let i = nameIdx + 1; i < cols.length; i++) {
-            const m = cols[i].match(/\d{1,3}(?:[.,]\d{3})*(?:,\d+)?/);
-            if (m) {
-              qty = parseQty(m[0]);
-              break;
+        if (block.includes("|")) {
+          const cols = block.split("|").map((c) => c.trim()).filter(Boolean);
+          const unitIdx = cols.findIndex((c) => /^(ml|pcs|ball|gr|kg|btl|box)$/i.test(c));
+          if (unitIdx >= 2) {
+            const qty = parseQty(cols[unitIdx - 1]);
+            const name = cleanName(cols[unitIdx - 2]);
+            if (name && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(name) && !isNoiseLine(name)) {
+              extracted.push({ name, qty });
+              continue;
             }
           }
-          if (name && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(name) && !isNoiseLine(name)) {
-            extracted.push({ name, qty });
+
+          const nameIdx = cols.findIndex((c) => /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(c) && !/^(ml|pcs|ball)$/i.test(c));
+          if (nameIdx !== -1) {
+            const name = cleanName(cols[nameIdx].replace(/^(.*?)\s+\d{1,2}$/, "$1"));
+            let qty = 0;
+            for (let i = nameIdx + 1; i < cols.length; i++) {
+              const m = cols[i].match(/\d{1,3}(?:[.,]\d{3})*(?:,\d+)?/);
+              if (m) {
+                qty = parseQty(m[0]);
+                break;
+              }
+            }
+            if (name && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(name) && !isNoiseLine(name)) {
+              extracted.push({ name, qty });
+              continue;
+            }
           }
         }
+
+        const itemNoPipe = parseLineWithoutPipe(block);
+        if (itemNoPipe) extracted.push(itemNoPipe);
       }
 
       let list = extracted;
@@ -368,7 +408,7 @@
 
     async function extractPdf(file) {
       if (!window.pdfjsLib) {
-        throw new Error("PDF.js gagal dimuat di halaman ini.");
+        throw new Error("PDF.js gagal dimuat.");
       }
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
@@ -416,7 +456,7 @@
           rowsData = [];
           renderTable();
           setStatus(
-            "PDF tidak bisa diekstrak menjadi teks bersih di browser ini. Buka file PDF-nya, tekan Ctrl+A lalu Ctrl+C, tempel ke kotak teks di kiri, lalu klik Proses Rekap.",
+            "PDF tidak bisa diekstrak menjadi teks bersih. Buka PDF-nya, copy teks (Ctrl+A, Ctrl+C), paste di kotak kiri, lalu klik Proses Rekap.",
             "warn"
           );
           return;
@@ -425,33 +465,21 @@
         fileLabel.textContent = `Dimuat: ${file.name}`;
         rowsData = parseDocumentText(text);
         renderTable();
-        setStatus(`Berhasil merekap ${rowsData.length} jenis barang dari ${file.name}.`, "success");
+        setStatus(`Berhasil merekap ${rowsData.length} jenis barang (Nama Barang & Qty) dari ${file.name}.`, "success");
       } catch (err) {
         fileLabel.textContent = "Gagal membaca file";
         rowsData = [];
         renderTable();
-        setStatus(
-          `Gagal membaca file (${err.message}). Anda bisa membuka PDF-nya, copy teks (Ctrl+A, Ctrl+C), lalu paste ke kotak teks di kiri.`,
-          "warn"
-        );
+        setStatus(`Gagal membaca file: ${err.message}`, "error");
       }
     });
 
     document.getElementById("btnProcess").addEventListener("click", () => {
       clearStatus();
-      if (isRawPdfBinary(rawInput.value)) {
-        rowsData = [];
-        renderTable();
-        setStatus(
-          "Terdeteksi kode biner mentah PDF (%PDF-). Hapus isi kotak tersebut, copy teks dari tampilan PDF (Ctrl+A, Ctrl+C), lalu paste di sini.",
-          "error"
-        );
-        return;
-      }
       rowsData = parseDocumentText(rawInput.value);
       renderTable();
       if (rowsData.length > 0) {
-        setStatus(`Berhasil memproses ${rowsData.length} jenis barang.`, "success");
+        setStatus(`Berhasil memproses ${rowsData.length} jenis barang (Nama Barang & Qty).`, "success");
       } else {
         setStatus("Tidak ada item barang yang dikenali dari teks tersebut.", "warn");
       }
@@ -460,7 +488,7 @@
     document.getElementById("btnSampleA").addEventListener("click", () => {
       clearStatus();
       rawInput.value = SAMPLE_SD;
-      fileLabel.textContent = "Contoh format SD00029158 dimuat";
+      fileLabel.textContent = "Contoh SD00029158 dimuat";
       rowsData = parseDocumentText(SAMPLE_SD);
       renderTable();
       setStatus(`Contoh SD00029158 dimuat (${rowsData.length} item).`, "success");
@@ -469,17 +497,17 @@
     document.getElementById("btnSampleB").addEventListener("click", () => {
       clearStatus();
       rawInput.value = SAMPLE_INV;
-      fileLabel.textContent = "Contoh format invoice dimuat";
+      fileLabel.textContent = "Contoh Invoice dimuat";
       rowsData = parseDocumentText(SAMPLE_INV);
       renderTable();
-      setStatus(`Contoh invoice dimuat (${rowsData.length} item).`, "success");
+      setStatus(`Contoh Invoice dimuat (${rowsData.length} item).`, "success");
     });
 
     document.getElementById("btnClear").addEventListener("click", () => {
       clearStatus();
       rawInput.value = "";
       fileInput.value = "";
-      fileLabel.textContent = "PDF akan diekstrak otomatis ke teks di bawah";
+      fileLabel.textContent = "PDF akan diekstrak dan langsung direkap";
       rowsData = [];
       renderTable();
     });
