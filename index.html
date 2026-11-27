@@ -8,32 +8,34 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
-  <div class="max-w-6xl mx-auto px-4 py-8">
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+  <div class="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <!-- Header -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
       <h1 class="text-2xl font-bold text-slate-900">Rekap Ketersediaan Barang</h1>
       <p class="text-sm text-slate-500 mt-1">
-        Import file <strong>.pdf</strong>, <strong>.csv</strong>, <strong>.txt</strong>, atau <strong>paste teks</strong> — hasil rekap hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong> yang bisa diedit.
+        Bagian 1 import dokumen, bagian 2 stok aktif (otomatis bertambah saat rekap baru & qty bisa diedit), bagian 3 riwayat per bulan & tanggal.
       </p>
     </div>
 
-    <div id="statusBox" class="hidden mb-6 rounded-xl border px-4 py-3 text-sm"></div>
+    <div id="statusBox" class="hidden rounded-xl border px-4 py-3 text-sm"></div>
 
+    <!-- Bagian 1 & Bagian 2 -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Kolom Kiri -->
+      <!-- Bagian 1: Import / Input Data Barang -->
       <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
         <h2 class="text-lg font-semibold text-slate-900">1. Import / Input Data Barang</h2>
 
         <label class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/60">
           <input id="fileInput" type="file" accept=".pdf,.csv,.txt" class="hidden" />
           <div class="text-sm font-medium text-indigo-600">Pilih File PDF, CSV, atau TXT</div>
-          <div id="fileLabel" class="text-xs text-slate-500 mt-1">Teks akan dimuat dulu, lalu klik Proses Rekap</div>
+          <div id="fileLabel" class="text-xs text-slate-500 mt-1">Teks dimuat dulu, klik Proses Rekap untuk menambah ke stok</div>
         </label>
 
         <div>
           <label for="rawInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
             Teks Dokumen (Bisa Diedit / Di-Paste Manual)
           </label>
-          <textarea id="rawInput" rows="12" placeholder="Pilih file PDF/CSV/TXT di atas atau paste teks dokumen di sini..."
+          <textarea id="rawInput" rows="11" placeholder="Pilih file PDF/CSV/TXT di atas atau paste teks dokumen di sini..."
             class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-xs font-mono p-3 outline-none"></textarea>
         </div>
 
@@ -47,8 +49,8 @@
 
         <div class="space-y-2 text-sm text-slate-700">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input id="mergeSame" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-            <span>Gabungkan (jumlahkan Qty) jika Nama Barang sama</span>
+            <input id="addToExisting" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            <span>Otomatis tambahkan ke stok yang masih ada di bagian 2</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
             <input id="hideZero" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
@@ -62,16 +64,18 @@
         </button>
       </div>
 
-      <!-- Kolom Kanan -->
+      <!-- Bagian 2: Hasil Rekap Ketersediaan (Stok Aktif) -->
       <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">2. Hasil Rekap Ketersediaan</h2>
-            <p class="text-xs text-slate-500">Hanya menampilkan <strong>Nama Barang</strong> dan <strong>Qty</strong> (Qty bisa diubah langsung)</p>
+            <h2 class="text-lg font-semibold text-slate-900">2. Hasil Rekap Ketersediaan (Stok Aktif)</h2>
+            <p class="text-xs text-slate-500">
+              Sumber aktif: <span id="activeSourceText" class="font-semibold text-slate-700">Belum ada data</span> • Qty bisa diubah langsung
+            </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button id="btnLoadSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
-              Muat dari Sheet
+              Muat Stok Sheet1
             </button>
             <button id="btnSaveSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
               Simpan ke Google Sheets
@@ -104,7 +108,7 @@
             class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-sm px-3.5 py-2 outline-none" />
         </div>
 
-        <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1 max-h-[540px] overflow-y-auto">
+        <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1 max-h-[520px] overflow-y-auto">
           <table class="w-full text-left border-collapse">
             <thead class="bg-slate-100 text-slate-700 text-xs uppercase sticky top-0">
               <tr>
@@ -116,12 +120,54 @@
             <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
               <tr>
                 <td colspan="3" class="py-10 text-center text-slate-400">
-                  Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau klik "Muat dari Sheet".
+                  Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau muat dari riwayat/Sheet.
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- Bagian 3: Riwayat Rekap Sebelumnya (Bulan & Tanggal + Load) -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900">3. Riwayat Rekap Tersimpan (Bulan & Tanggal)</h2>
+          <p class="text-xs text-slate-500">
+            Daftar rekap yang sudah pernah disimpan. Pilih bulan/tanggal lalu klik <strong>Load</strong> untuk menampilkannya ke bagian 2.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filterMonth" class="rounded-lg border border-slate-300 text-xs px-3 py-1.5 bg-white text-slate-700 outline-none">
+            <option value="">Semua Bulan</option>
+          </select>
+          <button id="btnRefreshHistory" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
+            Refresh Riwayat
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto border border-slate-200 rounded-xl">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+            <tr>
+              <th class="py-3 px-4">Bulan</th>
+              <th class="py-3 px-4">Tanggal & Waktu</th>
+              <th class="py-3 px-4">Sumber / File</th>
+              <th class="py-3 px-4 text-right">Jenis</th>
+              <th class="py-3 px-4 text-right">Total Qty</th>
+              <th class="py-3 px-4 text-right w-28">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody" class="divide-y divide-slate-100 text-sm">
+            <tr>
+              <td colspan="6" class="py-8 text-center text-slate-400">
+                Belum ada riwayat dimuat. Klik "Refresh Riwayat" atau simpan rekap ke Google Sheets.
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -135,8 +181,10 @@
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxT1vKFnhhrATrkCGle6mp05qWqa02BeS5bEePAlxSjzPboqvdpBLiQbMGgdzeLL_dm/exec";
     const STORAGE_GAS_KEY = "stock_toko_gas_url";
     const STORAGE_REKAP_KEY = "stock_toko_rekap_aktif";
+    const STORAGE_HISTORY_KEY = "stock_toko_riwayat_lokal";
 
     let rowsData = [];
+    let historyData = [];
     let currentFileName = "Input Manual";
 
     const fileInput = document.getElementById("fileInput");
@@ -145,9 +193,13 @@
     const gasUrlInput = document.getElementById("gasUrlInput");
     const statusBox = document.getElementById("statusBox");
     const tableBody = document.getElementById("tableBody");
+    const historyBody = document.getElementById("historyBody");
+    const filterMonth = document.getElementById("filterMonth");
     const searchBox = document.getElementById("searchBox");
+    const activeSourceText = document.getElementById("activeSourceText");
     const btnSaveSheet = document.getElementById("btnSaveSheet");
     const btnLoadSheet = document.getElementById("btnLoadSheet");
+    const btnRefreshHistory = document.getElementById("btnRefreshHistory");
 
     const savedGasUrl = localStorage.getItem(STORAGE_GAS_KEY);
     if (!savedGasUrl || savedGasUrl !== DEFAULT_GAS_URL) {
@@ -166,17 +218,60 @@
         fileName: currentFileName,
         items: rowsData
       }));
+      activeSourceText.textContent = currentFileName;
+    }
+
+    function saveLocalHistory() {
+      localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(historyData));
+    }
+
+    function recordHistoryEntry(fileName, items) {
+      const now = new Date();
+      const monthNames = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ];
+      const dd = String(now.getDate()).padStart(2, "0");
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yyyy = now.getFullYear();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const min = String(now.getMinutes()).padStart(2, "0");
+
+      const totalQty = items.reduce((acc, i) => acc + (Number(i.qty) || 0), 0);
+      historyData.unshift({
+        id: "local-" + Date.now(),
+        bulanLabel: `${monthNames[now.getMonth()]} ${yyyy}`,
+        tanggalLabel: `${dd}/${mm}/${yyyy} ${hh}:${min}`,
+        namaFile: fileName,
+        totalJenis: items.length,
+        totalQty: totalQty,
+        items: items.map((i) => ({ name: i.name, qty: Number(i.qty) || 0 }))
+      });
+      saveLocalHistory();
+      populateMonthFilter();
+      renderHistory();
     }
 
     function loadLocalState() {
       try {
         const raw = localStorage.getItem(STORAGE_REKAP_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.items)) {
-          rowsData = parsed.items;
-          currentFileName = parsed.fileName || "Rekap Tersimpan";
-          renderTable();
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed.items)) {
+            rowsData = parsed.items;
+            currentFileName = parsed.fileName || "Rekap Tersimpan";
+            activeSourceText.textContent = currentFileName;
+            renderTable();
+          }
+        }
+        const rawHist = localStorage.getItem(STORAGE_HISTORY_KEY);
+        if (rawHist) {
+          const parsedHist = JSON.parse(rawHist);
+          if (Array.isArray(parsedHist)) {
+            historyData = parsedHist;
+            populateMonthFilter();
+            renderHistory();
+          }
         }
       } catch (_) {}
     }
@@ -364,19 +459,16 @@
         if (itemNoPipe) extracted.push(itemNoPipe);
       }
 
-      let list = extracted;
-      if (document.getElementById("mergeSame").checked) {
-        const map = new Map();
-        for (const item of extracted) {
-          const key = item.name.toLowerCase();
-          if (map.has(key)) {
-            map.get(key).qty += item.qty;
-          } else {
-            map.set(key, { name: item.name, qty: item.qty });
-          }
+      const map = new Map();
+      for (const item of extracted) {
+        const key = item.name.toLowerCase();
+        if (map.has(key)) {
+          map.get(key).qty += item.qty;
+        } else {
+          map.set(key, { name: item.name, qty: item.qty });
         }
-        list = Array.from(map.values());
       }
+      let list = Array.from(map.values());
 
       if (document.getElementById("hideZero").checked) {
         list = list.filter((i) => i.qty > 0);
@@ -385,12 +477,41 @@
       return list;
     }
 
+    function mergeIncomingIntoStock(existingStock, incomingItems, shouldAdd) {
+      if (!shouldAdd || existingStock.length === 0) {
+        return incomingItems.map((i) => ({ name: i.name, qty: Number(i.qty) || 0 }));
+      }
+
+      const map = new Map();
+      for (const item of existingStock) {
+        const key = String(item.name || "").trim().toLowerCase();
+        if (!key) continue;
+        map.set(key, {
+          name: String(item.name).trim(),
+          qty: Math.max(0, Number(item.qty) || 0)
+        });
+      }
+
+      for (const inc of incomingItems) {
+        const key = String(inc.name || "").trim().toLowerCase();
+        if (!key) continue;
+        const incQty = Math.max(0, Number(inc.qty) || 0);
+        if (map.has(key)) {
+          map.get(key).qty += incQty;
+        } else {
+          map.set(key, { name: String(inc.name).trim(), qty: incQty });
+        }
+      }
+
+      return Array.from(map.values());
+    }
+
     function fmtNum(n) {
       return new Intl.NumberFormat("id-ID").format(n);
     }
 
     function escapeHtml(str) {
-      return str
+      return String(str || "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -418,7 +539,7 @@
         tableBody.innerHTML = `
           <tr>
             <td colspan="3" class="py-10 text-center text-slate-400">
-              Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau klik "Muat dari Sheet".
+              Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau muat dari riwayat/Sheet.
             </td>
           </tr>`;
         return;
@@ -450,6 +571,69 @@
               : rowsData;
             updateSummary(currentFiltered);
           }
+        });
+      });
+    }
+
+    function populateMonthFilter() {
+      const selected = filterMonth.value;
+      const months = Array.from(new Set(historyData.map((h) => h.bulanLabel).filter(Boolean)));
+      filterMonth.innerHTML = `<option value="">Semua Bulan</option>` +
+        months.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("");
+      if (months.includes(selected)) {
+        filterMonth.value = selected;
+      }
+    }
+
+    function renderHistory() {
+      const selectedMonth = filterMonth.value;
+      const list = selectedMonth
+        ? historyData.filter((h) => h.bulanLabel === selectedMonth)
+        : historyData;
+
+      if (!list.length) {
+        historyBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-slate-400">
+              Belum ada riwayat rekap tersimpan.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      historyBody.innerHTML = list
+        .map((entry, idx) => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 font-medium text-slate-700">${escapeHtml(entry.bulanLabel || "-")}</td>
+            <td class="py-2.5 px-4 text-slate-800">${escapeHtml(entry.tanggalLabel || "-")}</td>
+            <td class="py-2.5 px-4 text-slate-600">${escapeHtml(entry.namaFile || "-")}</td>
+            <td class="py-2.5 px-4 text-right text-slate-700">${fmtNum(entry.totalJenis || 0)}</td>
+            <td class="py-2.5 px-4 text-right font-semibold text-indigo-700">${fmtNum(entry.totalQty || 0)}</td>
+            <td class="py-2.5 px-4 text-right">
+              <button type="button" data-hidx="${idx}"
+                class="btn-load-history px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
+                Load
+              </button>
+            </td>
+          </tr>`)
+        .join("");
+
+      historyBody.querySelectorAll(".btn-load-history").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const idx = Number(e.target.dataset.hidx);
+          const chosen = list[idx];
+          if (!chosen || !Array.isArray(chosen.items) || chosen.items.length === 0) {
+            setStatus("Riwayat ini tidak memiliki detail item tersimpan.", "warn");
+            return;
+          }
+          rowsData = chosen.items.map((i) => ({
+            name: String(i.name || "").trim(),
+            qty: Math.max(0, Number(i.qty) || 0)
+          }));
+          currentFileName = `${chosen.namaFile} (${chosen.tanggalLabel})`;
+          saveLocalState();
+          renderTable();
+          setStatus(`Memuat ${rowsData.length} item dari riwayat tanggal ${chosen.tanggalLabel} ke bagian 2.`, "success");
         });
       });
     }
@@ -510,7 +694,7 @@
         }
 
         fileLabel.textContent = `Dimuat: ${file.name} (klik Proses Rekap)`;
-        setStatus(`File ${file.name} dimuat ke kotak teks. Klik "Proses Rekap (Nama Barang & Qty)" untuk memperbarui hasil rekap.`, "info");
+        setStatus(`File ${file.name} siap diproses. Klik "Proses Rekap" untuk menambah/memperbarui stok di bagian 2.`, "info");
       } catch (err) {
         fileLabel.textContent = "Gagal membaca file";
         setStatus(`Gagal membaca file: ${err.message}`, "error");
@@ -522,33 +706,53 @@
       if (!fileInput.files?.length) {
         currentFileName = "Input Manual";
       }
-      rowsData = parseDocumentText(rawInput.value);
+      const parsed = parseDocumentText(rawInput.value);
+      if (!parsed.length) {
+        setStatus("Tidak ada item barang yang dikenali dari teks tersebut.", "warn");
+        return;
+      }
+
+      const shouldAdd = document.getElementById("addToExisting").checked;
+      rowsData = mergeIncomingIntoStock(rowsData, parsed, shouldAdd);
       saveLocalState();
       renderTable();
-      if (rowsData.length > 0) {
-        setStatus(`Berhasil memproses ${rowsData.length} jenis barang (Nama Barang & Qty).`, "success");
-      } else {
-        setStatus("Tidak ada item barang yang dikenali dari teks tersebut.", "warn");
-      }
+
+      setStatus(
+        shouldAdd
+          ? `Berhasil menambahkan hasil rekap (${parsed.length} item) ke stok aktif bagian 2 (total ${rowsData.length} jenis barang).`
+          : `Berhasil memperbarui bagian 2 dengan ${rowsData.length} jenis barang.`,
+        "success"
+      );
     });
+
+    async function fetchHistoryFromSheet() {
+      const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
+      if (!gasUrl) return;
+      const res = await fetch(`${gasUrl}?mode=all`, { method: "GET" });
+      const data = await res.json();
+      if (data.ok) {
+        if (Array.isArray(data.history)) {
+          historyData = data.history;
+          saveLocalHistory();
+          populateMonthFilter();
+          renderHistory();
+        }
+        return data;
+      }
+      throw new Error(data.message || "Gagal memuat dari Sheet.");
+    }
 
     btnLoadSheet.addEventListener("click", async () => {
       clearStatus();
       const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
       localStorage.setItem(STORAGE_GAS_KEY, gasUrl);
 
-      if (!gasUrl) {
-        setStatus("Masukkan URL Google Apps Script Web App terlebih dahulu.", "warn");
-        return;
-      }
-
       btnLoadSheet.disabled = true;
       btnLoadSheet.textContent = "Memuat...";
 
       try {
-        const res = await fetch(gasUrl, { method: "GET" });
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.items)) {
+        const data = await fetchHistoryFromSheet();
+        if (Array.isArray(data.items)) {
           rowsData = data.items.map((i) => ({
             name: String(i.name || "").trim(),
             qty: Math.max(0, Number(i.qty) || 0)
@@ -556,15 +760,28 @@
           currentFileName = "Google Sheets (Sheet1)";
           saveLocalState();
           renderTable();
-          setStatus(data.message || `Berhasil memuat ${rowsData.length} barang dari Sheet1.`, "success");
-        } else {
-          setStatus(data.message || "Gagal memuat data dari Google Sheets.", "warn");
+          setStatus(`Berhasil memuat ${rowsData.length} barang dari Sheet1.`, "success");
         }
       } catch (err) {
         setStatus(`Gagal sinkron dari Google Sheets: ${err.message}`, "error");
       } finally {
         btnLoadSheet.disabled = false;
-        btnLoadSheet.textContent = "Muat dari Sheet";
+        btnLoadSheet.textContent = "Muat Stok Sheet1";
+      }
+    });
+
+    btnRefreshHistory.addEventListener("click", async () => {
+      clearStatus();
+      btnRefreshHistory.disabled = true;
+      btnRefreshHistory.textContent = "Memuat...";
+      try {
+        await fetchHistoryFromSheet();
+        setStatus(`Riwayat rekap diperbarui (${historyData.length} entri).`, "success");
+      } catch (err) {
+        setStatus(`Gagal memuat riwayat: ${err.message}`, "error");
+      } finally {
+        btnRefreshHistory.disabled = false;
+        btnRefreshHistory.textContent = "Refresh Riwayat";
       }
     });
 
@@ -573,10 +790,6 @@
       const gasUrl = gasUrlInput.value.trim() || DEFAULT_GAS_URL;
       localStorage.setItem(STORAGE_GAS_KEY, gasUrl);
 
-      if (!gasUrl) {
-        setStatus("Masukkan URL Google Apps Script Web App terlebih dahulu.", "warn");
-        return;
-      }
       if (!rowsData.length) {
         setStatus("Belum ada data rekap untuk disimpan ke Google Sheets.", "warn");
         return;
@@ -586,21 +799,25 @@
       btnSaveSheet.textContent = "Menyimpan...";
 
       try {
-        const payload = {
-          namaFile: currentFileName,
-          items: rowsData.map((i) => ({ name: i.name, qty: Math.max(0, Number(i.qty) || 0) }))
-        };
+        const cleanItems = rowsData.map((i) => ({
+          name: i.name,
+          qty: Math.max(0, Number(i.qty) || 0)
+        }));
 
         await fetch(gasUrl, {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            namaFile: currentFileName,
+            items: cleanItems
+          })
         });
 
         saveLocalState();
+        recordHistoryEntry(currentFileName, cleanItems);
         setStatus(
-          `Data (${rowsData.length} jenis barang) dikirim ke Google Sheets (Sheet1 & Sheet2).`,
+          `Data (${cleanItems.length} jenis barang) disimpan ke Google Sheets & masuk ke Riwayat bulan/tanggal.`,
           "success"
         );
       } catch (err) {
@@ -611,6 +828,7 @@
       }
     });
 
+    filterMonth.addEventListener("change", renderHistory);
     searchBox.addEventListener("input", renderTable);
 
     document.getElementById("btnCopy").addEventListener("click", async () => {
