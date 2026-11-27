@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#4f46e5" />
   <title>Rekap Ketersediaan Barang (Nama Barang & Qty)</title>
   <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -1369,7 +1369,7 @@
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
+        navigator.serviceWorker.register("./sw.js", { scope: "/stock-toko/" }).catch(() => {});
       });
     }
   </script>
