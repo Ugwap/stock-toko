@@ -5,16 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rekap Ketersediaan Barang (Nama Barang & Qty)</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class"
+    };
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen">
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors">
   <div class="max-w-6xl mx-auto px-4 py-8 space-y-6">
     <!-- Header -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-      <h1 class="text-2xl font-bold text-slate-900">Rekap Ketersediaan Barang</h1>
-      <p class="text-sm text-slate-500 mt-1">
-        Bagian 1 import dokumen, bagian 2 stok aktif (edit qty, hapus barang habis, & tombol clear), bagian 3 riwayat bulan/tanggal & log barang habis/masuk lagi.
-      </p>
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Rekap Ketersediaan Barang</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Bagian 1 import dokumen, bagian 2 stok aktif (edit qty, hapus barang habis, & tombol clear), bagian 3 riwayat bulan/tanggal & log barang habis/masuk lagi.
+        </p>
+      </div>
+      <button id="btnDarkMode" type="button"
+        class="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition self-start sm:self-auto">
+        Dark Mode: OFF
+      </button>
     </div>
 
     <div id="statusBox" class="hidden rounded-xl border px-4 py-3 text-sm"></div>
@@ -22,38 +33,38 @@
     <!-- Bagian 1 & Bagian 2 -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <!-- Bagian 1: Import / Input Data Barang -->
-      <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
-        <h2 class="text-lg font-semibold text-slate-900">1. Import / Input Data Barang</h2>
+      <div class="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col gap-4">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white">1. Import / Input Data Barang</h2>
 
-        <label class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/60">
+        <label class="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50/60 dark:bg-slate-800/50">
           <input id="fileInput" type="file" accept=".pdf,.csv,.txt" class="hidden" />
-          <div class="text-sm font-medium text-indigo-600">Pilih File PDF, CSV, atau TXT</div>
-          <div id="fileLabel" class="text-xs text-slate-500 mt-1">Teks dimuat dulu, klik Proses Rekap untuk menambah ke stok</div>
+          <div class="text-sm font-medium text-indigo-600 dark:text-indigo-400">Pilih File PDF, CSV, atau TXT</div>
+          <div id="fileLabel" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Teks dimuat dulu, klik Proses Rekap untuk menambah ke stok</div>
         </label>
 
         <div>
-          <label for="rawInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+          <label for="rawInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
             Teks Dokumen (Bisa Diedit / Di-Paste Manual)
           </label>
           <textarea id="rawInput" rows="11" placeholder="Pilih file PDF/CSV/TXT di atas atau paste teks dokumen di sini..."
-            class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-xs font-mono p-3 outline-none"></textarea>
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 text-xs font-mono p-3 outline-none"></textarea>
         </div>
 
         <div>
-          <label for="gasUrlInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+          <label for="gasUrlInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
             URL Google Apps Script Web App
           </label>
           <input id="gasUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec"
-            class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-xs px-3.5 py-2 outline-none" />
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 text-xs px-3.5 py-2 outline-none" />
         </div>
 
-        <div class="space-y-2 text-sm text-slate-700">
+        <div class="space-y-2 text-sm text-slate-700 dark:text-slate-300">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input id="addToExisting" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            <input id="addToExisting" type="checkbox" checked class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500" />
             <span>Otomatis tambahkan ke stok yang masih ada di bagian 2</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
-            <input id="hideZero" type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            <input id="hideZero" type="checkbox" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500" />
             <span>Sembunyikan item dengan Qty 0</span>
           </label>
         </div>
@@ -65,64 +76,64 @@
       </div>
 
       <!-- Bagian 2: Hasil Rekap Ketersediaan (Stok Aktif) -->
-      <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+      <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">2. Hasil Rekap Ketersediaan (Stok Aktif)</h2>
-            <p class="text-xs text-slate-500">
-              Sumber aktif: <span id="activeSourceText" class="font-semibold text-slate-700">Belum ada data</span> • Qty bisa diubah atau dihapus
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">2. Hasil Rekap Ketersediaan (Stok Aktif)</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              Sumber aktif: <span id="activeSourceText" class="font-semibold text-slate-700 dark:text-slate-200">Belum ada data</span> • Qty bisa diubah atau dihapus
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <button id="btnClearAll" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition">
+            <button id="btnClearAll" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 transition">
               Clear
             </button>
-            <button id="btnLoadSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
+            <button id="btnLoadSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 transition">
               Muat Stok Sheet1
             </button>
             <button id="btnSaveSheet" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
               Simpan ke Google Sheets
             </button>
-            <button id="btnCopy" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition">
+            <button id="btnCopy" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition">
               Salin Teks
             </button>
             <button id="btnCsv" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition">
               Export CSV
             </button>
-            <button id="btnPrint" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-900 text-white transition">
+            <button id="btnPrint" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white transition">
               Cetak
             </button>
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3 mb-4">
-          <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
-            <div class="text-xs text-slate-500">Total Jenis Barang</div>
-            <div id="countItems" class="text-xl font-bold text-slate-900 mt-0.5">0</div>
+          <div class="rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 p-3">
+            <div class="text-xs text-slate-500 dark:text-slate-400">Total Jenis Barang</div>
+            <div id="countItems" class="text-xl font-bold text-slate-900 dark:text-white mt-0.5">0</div>
           </div>
-          <div class="rounded-xl bg-indigo-50 border border-indigo-100 p-3">
-            <div class="text-xs text-indigo-700">Total Kuantitas (Qty)</div>
-            <div id="countQty" class="text-xl font-bold text-indigo-900 mt-0.5">0</div>
+          <div class="rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900 p-3">
+            <div class="text-xs text-indigo-700 dark:text-indigo-300">Total Kuantitas (Qty)</div>
+            <div id="countQty" class="text-xl font-bold text-indigo-900 dark:text-indigo-200 mt-0.5">0</div>
           </div>
         </div>
 
         <div class="mb-3">
           <input id="searchBox" type="text" placeholder="Cari nama barang..."
-            class="w-full rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-sm px-3.5 py-2 outline-none" />
+            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 text-sm px-3.5 py-2 outline-none" />
         </div>
 
-        <div class="overflow-x-auto border border-slate-200 rounded-xl flex-1 max-h-[520px] overflow-y-auto">
+        <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl flex-1 max-h-[520px] overflow-y-auto">
           <table class="w-full text-left border-collapse">
-            <thead class="bg-slate-100 text-slate-700 text-xs uppercase sticky top-0">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs uppercase sticky top-0">
               <tr>
                 <th class="py-3 px-4 w-14">No</th>
                 <th class="py-3 px-4">Nama Barang</th>
                 <th class="py-3 px-4 text-right w-44">Qty & Aksi</th>
               </tr>
             </thead>
-            <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
+            <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               <tr>
-                <td colspan="3" class="py-10 text-center text-slate-400">
+                <td colspan="3" class="py-10 text-center text-slate-400 dark:text-slate-500">
                   Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau muat dari riwayat/Sheet.
                 </td>
               </tr>
@@ -133,28 +144,28 @@
     </div>
 
     <!-- Bagian 3: Riwayat Rekap (Bulan & Tanggal + Load) & Rekapan Barang Habis / Masuk Lagi -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 space-y-6">
       <div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">3. Riwayat Rekap Tersimpan (Bulan & Tanggal)</h2>
-            <p class="text-xs text-slate-500">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">3. Riwayat Rekap Tersimpan (Bulan & Tanggal)</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
               Daftar rekap yang sudah pernah disimpan. Pilih bulan/tanggal lalu klik <strong>Load</strong> untuk menampilkannya ke bagian 2.
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <select id="filterMonth" class="rounded-lg border border-slate-300 text-xs px-3 py-1.5 bg-white text-slate-700 outline-none">
+            <select id="filterMonth" class="rounded-lg border border-slate-300 dark:border-slate-700 text-xs px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none">
               <option value="">Semua Bulan</option>
             </select>
-            <button id="btnRefreshHistory" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition">
+            <button id="btnRefreshHistory" type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 transition">
               Refresh Riwayat
             </button>
           </div>
         </div>
 
-        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+        <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
           <table class="w-full text-left border-collapse">
-            <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs uppercase">
               <tr>
                 <th class="py-3 px-4">Bulan</th>
                 <th class="py-3 px-4">Tanggal & Waktu</th>
@@ -164,9 +175,9 @@
                 <th class="py-3 px-4 text-right w-28">Aksi</th>
               </tr>
             </thead>
-            <tbody id="historyBody" class="divide-y divide-slate-100 text-sm">
+            <tbody id="historyBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               <tr>
-                <td colspan="6" class="py-8 text-center text-slate-400">
+                <td colspan="6" class="py-8 text-center text-slate-400 dark:text-slate-500">
                   Belum ada riwayat dimuat. Klik "Refresh Riwayat" atau simpan rekap ke Google Sheets.
                 </td>
               </tr>
@@ -176,22 +187,22 @@
       </div>
 
       <!-- Rekapan Barang Habis (Tanggal Habis) -->
-      <div class="pt-4 border-t border-slate-200">
+      <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <div>
-            <h3 class="text-base font-semibold text-slate-900">Rekapan Barang Habis</h3>
-            <p class="text-xs text-slate-500">
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Rekapan Barang Habis</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
               Mencatat barang yang dihapus karena habis beserta <strong>Tanggal Habis</strong> dan update bila sudah masuk lagi.
             </p>
           </div>
-          <button id="btnClearOutOfStock" type="button" class="px-3 py-1 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600 transition self-start sm:self-auto">
+          <button id="btnClearOutOfStock" type="button" class="px-3 py-1 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition self-start sm:self-auto">
             Bersihkan Rekapan Habis
           </button>
         </div>
 
-        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+        <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
           <table class="w-full text-left border-collapse">
-            <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs uppercase">
               <tr>
                 <th class="py-3 px-4">Nama Barang</th>
                 <th class="py-3 px-4">Tanggal Habis</th>
@@ -200,9 +211,9 @@
                 <th class="py-3 px-4 text-right">Status</th>
               </tr>
             </thead>
-            <tbody id="outOfStockBody" class="divide-y divide-slate-100 text-sm">
+            <tbody id="outOfStockBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               <tr>
-                <td colspan="5" class="py-6 text-center text-slate-400">
+                <td colspan="5" class="py-6 text-center text-slate-400 dark:text-slate-500">
                   Belum ada barang habis yang tercatat.
                 </td>
               </tr>
@@ -212,22 +223,22 @@
       </div>
 
       <!-- Rekapan Masuk Lagi (Tanggal Masuk Lagi) -->
-      <div class="pt-4 border-t border-slate-200">
+      <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <div>
-            <h3 class="text-base font-semibold text-slate-900">Rekapan Barang Masuk Lagi</h3>
-            <p class="text-xs text-slate-500">
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Rekapan Barang Masuk Lagi</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
               Mencatat <strong>Tanggal Masuk Lagi</strong> dan jumlah stok baru untuk barang yang sebelumnya habis.
             </p>
           </div>
-          <button id="btnClearRestocked" type="button" class="px-3 py-1 text-xs font-medium rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600 transition self-start sm:self-auto">
+          <button id="btnClearRestocked" type="button" class="px-3 py-1 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition self-start sm:self-auto">
             Bersihkan Rekapan Masuk Lagi
           </button>
         </div>
 
-        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+        <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
           <table class="w-full text-left border-collapse">
-            <thead class="bg-slate-100 text-slate-700 text-xs uppercase">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs uppercase">
               <tr>
                 <th class="py-3 px-4">Nama Barang</th>
                 <th class="py-3 px-4">Tanggal Masuk Lagi</th>
@@ -236,9 +247,9 @@
                 <th class="py-3 px-4">Sumber / File</th>
               </tr>
             </thead>
-            <tbody id="restockedBody" class="divide-y divide-slate-100 text-sm">
+            <tbody id="restockedBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               <tr>
-                <td colspan="5" class="py-6 text-center text-slate-400">
+                <td colspan="5" class="py-6 text-center text-slate-400 dark:text-slate-500">
                   Belum ada barang habis yang masuk lagi.
                 </td>
               </tr>
@@ -261,6 +272,7 @@
     const STORAGE_HISTORY_KEY = "stock_toko_riwayat_lokal";
     const STORAGE_OOS_KEY = "stock_toko_barang_habis";
     const STORAGE_RESTOCK_KEY = "stock_toko_masuk_lagi";
+    const STORAGE_THEME_KEY = "stock_toko_theme";
 
     let rowsData = [];
     let historyData = [];
@@ -268,6 +280,7 @@
     let restockedLogData = [];
     let currentFileName = "Input Manual";
 
+    const btnDarkMode = document.getElementById("btnDarkMode");
     const fileInput = document.getElementById("fileInput");
     const fileLabel = document.getElementById("fileLabel");
     const rawInput = document.getElementById("rawInput");
@@ -286,6 +299,19 @@
     const btnClearAll = document.getElementById("btnClearAll");
     const btnClearOutOfStock = document.getElementById("btnClearOutOfStock");
     const btnClearRestocked = document.getElementById("btnClearRestocked");
+
+    function applyTheme(isDark) {
+      document.documentElement.classList.toggle("dark", isDark);
+      btnDarkMode.textContent = isDark ? "Dark Mode: ON" : "Dark Mode: OFF";
+      localStorage.setItem(STORAGE_THEME_KEY, isDark ? "dark" : "light");
+    }
+
+    applyTheme(localStorage.getItem(STORAGE_THEME_KEY) === "dark");
+
+    btnDarkMode.addEventListener("click", () => {
+      const nextDark = !document.documentElement.classList.contains("dark");
+      applyTheme(nextDark);
+    });
 
     const savedGasUrl = localStorage.getItem(STORAGE_GAS_KEY);
     if (!savedGasUrl || savedGasUrl !== DEFAULT_GAS_URL) {
@@ -411,7 +437,7 @@
       if (!outOfStockData.length) {
         outOfStockBody.innerHTML = `
           <tr>
-            <td colspan="5" class="py-6 text-center text-slate-400">
+            <td colspan="5" class="py-6 text-center text-slate-400 dark:text-slate-500">
               Belum ada barang habis yang tercatat.
             </td>
           </tr>`;
@@ -422,14 +448,14 @@
         .map((o) => {
           const isRestocked = o.status === "Masuk Lagi";
           const badgeClass = isRestocked
-            ? "bg-emerald-100 text-emerald-800"
-            : "bg-rose-100 text-rose-800";
+            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+            : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300";
           return `
-            <tr class="hover:bg-slate-50">
-              <td class="py-2.5 px-4 font-medium text-slate-900">${escapeHtml(o.name)}</td>
-              <td class="py-2.5 px-4 text-slate-700">${escapeHtml(o.tanggalHabis || "-")}</td>
-              <td class="py-2.5 px-4 text-slate-800 font-medium">${escapeHtml(o.tanggalMasukLagi || "-")}</td>
-              <td class="py-2.5 px-4 text-right font-semibold text-indigo-700">${isRestocked ? fmtNum(o.qtyMasukLagi || 0) : "-"}</td>
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60">
+              <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">${escapeHtml(o.name)}</td>
+              <td class="py-2.5 px-4 text-slate-700 dark:text-slate-300">${escapeHtml(o.tanggalHabis || "-")}</td>
+              <td class="py-2.5 px-4 text-slate-800 dark:text-slate-200 font-medium">${escapeHtml(o.tanggalMasukLagi || "-")}</td>
+              <td class="py-2.5 px-4 text-right font-semibold text-indigo-700 dark:text-indigo-400">${isRestocked ? fmtNum(o.qtyMasukLagi || 0) : "-"}</td>
               <td class="py-2.5 px-4 text-right">
                 <span class="inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${badgeClass}">
                   ${escapeHtml(o.status || "Habis")}
@@ -444,7 +470,7 @@
       if (!restockedLogData.length) {
         restockedBody.innerHTML = `
           <tr>
-            <td colspan="5" class="py-6 text-center text-slate-400">
+            <td colspan="5" class="py-6 text-center text-slate-400 dark:text-slate-500">
               Belum ada barang habis yang masuk lagi.
             </td>
           </tr>`;
@@ -453,12 +479,12 @@
 
       restockedBody.innerHTML = restockedLogData
         .map((r) => `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-4 font-medium text-slate-900">${escapeHtml(r.name)}</td>
-            <td class="py-2.5 px-4 font-medium text-emerald-700">${escapeHtml(r.tanggalMasukLagi || "-")}</td>
-            <td class="py-2.5 px-4 text-right font-semibold text-indigo-700">${fmtNum(r.qtyMasukLagi || 0)}</td>
-            <td class="py-2.5 px-4 text-slate-600">${escapeHtml(r.tanggalHabisSebelumnya || "-")}</td>
-            <td class="py-2.5 px-4 text-slate-600">${escapeHtml(r.namaFile || "-")}</td>
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60">
+            <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">${escapeHtml(r.name)}</td>
+            <td class="py-2.5 px-4 font-medium text-emerald-700 dark:text-emerald-400">${escapeHtml(r.tanggalMasukLagi || "-")}</td>
+            <td class="py-2.5 px-4 text-right font-semibold text-indigo-700 dark:text-indigo-400">${fmtNum(r.qtyMasukLagi || 0)}</td>
+            <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(r.tanggalHabisSebelumnya || "-")}</td>
+            <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(r.namaFile || "-")}</td>
           </tr>`)
         .join("");
     }
@@ -527,16 +553,16 @@
     function setStatus(message, type = "info") {
       statusBox.classList.remove(
         "hidden",
-        "bg-emerald-50", "border-emerald-200", "text-emerald-800",
-        "bg-amber-50", "border-amber-200", "text-amber-800",
-        "bg-rose-50", "border-rose-200", "text-rose-800",
-        "bg-sky-50", "border-sky-200", "text-sky-800"
+        "bg-emerald-50", "border-emerald-200", "text-emerald-800", "dark:bg-emerald-950/60", "dark:border-emerald-800", "dark:text-emerald-300",
+        "bg-amber-50", "border-amber-200", "text-amber-800", "dark:bg-amber-950/60", "dark:border-amber-800", "dark:text-amber-300",
+        "bg-rose-50", "border-rose-200", "text-rose-800", "dark:bg-rose-950/60", "dark:border-rose-800", "dark:text-rose-300",
+        "bg-sky-50", "border-sky-200", "text-sky-800", "dark:bg-sky-950/60", "dark:border-sky-800", "dark:text-sky-300"
       );
       const map = {
-        success: ["bg-emerald-50", "border-emerald-200", "text-emerald-800"],
-        warn: ["bg-amber-50", "border-amber-200", "text-amber-800"],
-        error: ["bg-rose-50", "border-rose-200", "text-rose-800"],
-        info: ["bg-sky-50", "border-sky-200", "text-sky-800"],
+        success: ["bg-emerald-50", "border-emerald-200", "text-emerald-800", "dark:bg-emerald-950/60", "dark:border-emerald-800", "dark:text-emerald-300"],
+        warn: ["bg-amber-50", "border-amber-200", "text-amber-800", "dark:bg-amber-950/60", "dark:border-amber-800", "dark:text-amber-300"],
+        error: ["bg-rose-50", "border-rose-200", "text-rose-800", "dark:bg-rose-950/60", "dark:border-rose-800", "dark:text-rose-300"],
+        info: ["bg-sky-50", "border-sky-200", "text-sky-800", "dark:bg-sky-950/60", "dark:border-sky-800", "dark:text-sky-300"],
       };
       statusBox.classList.add(...(map[type] || map.info));
       statusBox.textContent = message;
@@ -786,7 +812,7 @@
       if (!filtered.length) {
         tableBody.innerHTML = `
           <tr>
-            <td colspan="3" class="py-10 text-center text-slate-400">
+            <td colspan="3" class="py-10 text-center text-slate-400 dark:text-slate-500">
               Belum ada data direkap. Pilih file/tempel teks lalu klik "Proses Rekap", atau muat dari riwayat/Sheet.
             </td>
           </tr>`;
@@ -796,15 +822,15 @@
       tableBody.innerHTML = filtered
         .map(
           ({ item, realIndex }, idx) => `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-4 text-slate-500">${idx + 1}</td>
-            <td class="py-2.5 px-4 font-medium text-slate-900">${escapeHtml(item.name)}</td>
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60">
+            <td class="py-2.5 px-4 text-slate-500 dark:text-slate-400">${idx + 1}</td>
+            <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">${escapeHtml(item.name)}</td>
             <td class="py-2.5 px-4 text-right">
               <div class="inline-flex items-center justify-end gap-2">
                 <input type="number" min="0" step="1" data-idx="${realIndex}" value="${Number(item.qty) || 0}"
-                  class="qty-input w-20 text-right font-semibold text-indigo-700 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-lg px-2 py-1 outline-none" />
+                  class="qty-input w-20 text-right font-semibold text-indigo-700 dark:text-indigo-300 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 rounded-lg px-2 py-1 outline-none" />
                 <button type="button" data-del="${realIndex}" title="Hapus barang habis"
-                  class="btn-del-item px-2 py-1 text-xs font-semibold rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition">
+                  class="btn-del-item px-2 py-1 text-xs font-semibold rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 transition">
                   Hapus
                 </button>
               </div>
@@ -861,7 +887,7 @@
       if (!list.length) {
         historyBody.innerHTML = `
           <tr>
-            <td colspan="6" class="py-8 text-center text-slate-400">
+            <td colspan="6" class="py-8 text-center text-slate-400 dark:text-slate-500">
               Belum ada riwayat rekap tersimpan.
             </td>
           </tr>`;
@@ -870,12 +896,12 @@
 
       historyBody.innerHTML = list
         .map((entry, idx) => `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-4 font-medium text-slate-700">${escapeHtml(entry.bulanLabel || "-")}</td>
-            <td class="py-2.5 px-4 text-slate-800">${escapeHtml(entry.tanggalLabel || "-")}</td>
-            <td class="py-2.5 px-4 text-slate-600">${escapeHtml(entry.namaFile || "-")}</td>
-            <td class="py-2.5 px-4 text-right text-slate-700">${fmtNum(entry.totalJenis || 0)}</td>
-            <td class="py-2.5 px-4 text-right font-semibold text-indigo-700">${fmtNum(entry.totalQty || 0)}</td>
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/60">
+            <td class="py-2.5 px-4 font-medium text-slate-700 dark:text-slate-300">${escapeHtml(entry.bulanLabel || "-")}</td>
+            <td class="py-2.5 px-4 text-slate-800 dark:text-slate-200">${escapeHtml(entry.tanggalLabel || "-")}</td>
+            <td class="py-2.5 px-4 text-slate-600 dark:text-slate-400">${escapeHtml(entry.namaFile || "-")}</td>
+            <td class="py-2.5 px-4 text-right text-slate-700 dark:text-slate-300">${fmtNum(entry.totalJenis || 0)}</td>
+            <td class="py-2.5 px-4 text-right font-semibold text-indigo-700 dark:text-indigo-400">${fmtNum(entry.totalQty || 0)}</td>
             <td class="py-2.5 px-4 text-right">
               <button type="button" data-hidx="${idx}"
                 class="btn-load-history px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
