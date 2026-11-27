@@ -13,17 +13,17 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors">
-  <div class="max-w-6xl mx-auto px-4 py-8 space-y-6">
+  <div class="max-w-6xl mx-auto px-4 py-4 space-y-5">
     <!-- Header -->
-    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Rekap Ketersediaan Barang</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Bagian 1 import dokumen, bagian 2 stok aktif (edit qty, hapus barang habis, & tombol clear), bagian 3 riwayat bulan/tanggal & log barang habis/masuk lagi.
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 px-3.5 py-2.5 flex items-center justify-between gap-2.5">
+      <div class="min-w-0">
+        <h1 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">Rekap Ketersediaan Barang</h1>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight line-clamp-2">
+          Bagian 1 import dokumen, bagian 2 stok aktif (edit qty, hapus barang habis, &amp; tombol clear), bagian 3 riwayat bulan/tanggal &amp; log barang habis/masuk lagi.
         </p>
       </div>
       <button id="btnDarkMode" type="button"
-        class="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition self-start sm:self-auto">
+        class="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shrink-0">
         Dark Mode: OFF
       </button>
     </div>
@@ -71,7 +71,7 @@
 
         <button id="btnProcess" type="button"
           class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-sm transition">
-          Proses Rekap (Nama Barang & Qty)
+          Proses Rekap (Nama Barang &amp; Qty)
         </button>
       </div>
 
@@ -128,7 +128,7 @@
               <tr>
                 <th class="py-3 px-4 w-14">No</th>
                 <th class="py-3 px-4">Nama Barang</th>
-                <th class="py-3 px-4 text-right w-44">Qty & Aksi</th>
+                <th class="py-3 px-4 text-right w-44">Qty &amp; Aksi</th>
               </tr>
             </thead>
             <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -148,7 +148,7 @@
       <div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">3. Riwayat Rekap Tersimpan (Bulan & Tanggal)</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">3. Riwayat Rekap Tersimpan (Bulan &amp; Tanggal)</h2>
             <p class="text-xs text-slate-500 dark:text-slate-400">
               Daftar rekap yang sudah pernah disimpan. Pilih bulan/tanggal lalu klik <strong>Load</strong> untuk menampilkannya ke bagian 2.
             </p>
@@ -168,7 +168,7 @@
             <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs uppercase">
               <tr>
                 <th class="py-3 px-4">Bulan</th>
-                <th class="py-3 px-4">Tanggal & Waktu</th>
+                <th class="py-3 px-4">Tanggal &amp; Waktu</th>
                 <th class="py-3 px-4">Sumber / File</th>
                 <th class="py-3 px-4 text-right">Jenis</th>
                 <th class="py-3 px-4 text-right">Total Qty</th>
