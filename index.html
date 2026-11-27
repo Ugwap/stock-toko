@@ -50,23 +50,34 @@
             class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 text-xs font-mono p-3 outline-none"></textarea>
         </div>
 
+        <!-- Database Nama Parfum (Input Stok Awal & Export Data Tambahan) -->
+        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <label for="perfumeDbInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              Database Nama Parfum (Stok Awal / Tambahan)
+            </label>
+            <span id="perfumeDbCount" class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">0 item</span>
+          </div>
+          <textarea id="perfumeDbInput" rows="4" placeholder="1 nama parfum per baris, atau format: Nama Parfum | Qty&#10;Contoh:&#10;Baccarat Rouge 540 | 20&#10;Black Opium | 15&#10;Santal 33"
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 text-xs font-mono p-2.5 outline-none"></textarea>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnApplyPerfumeDb" type="button"
+              class="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition">
+              Masukan ke Stok
+            </button>
+            <button id="btnExportPerfumeDb" type="button"
+              class="py-1.5 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs transition">
+              Export Database
+            </button>
+          </div>
+        </div>
+
         <div>
           <label for="gasUrlInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
             URL Google Apps Script Web App
           </label>
           <input id="gasUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec"
             class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-900 text-xs px-3.5 py-2 outline-none" />
-        </div>
-
-        <div class="space-y-2 text-sm text-slate-700 dark:text-slate-300">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input id="addToExisting" type="checkbox" checked class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500" />
-            <span>Otomatis tambahkan ke stok yang masih ada di bagian 2</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input id="hideZero" type="checkbox" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500" />
-            <span>Sembunyikan item dengan Qty 0</span>
-          </label>
         </div>
 
         <button id="btnProcess" type="button"
@@ -172,7 +183,7 @@
                 <th class="py-3 px-4">Sumber / File</th>
                 <th class="py-3 px-4 text-right">Jenis</th>
                 <th class="py-3 px-4 text-right">Total Qty</th>
-                <th class="py-3 px-4 text-right w-28">Aksi</th>
+                <th class="py-3 px-4 text-right w-40">Aksi</th>
               </tr>
             </thead>
             <tbody id="historyBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -273,6 +284,7 @@
     const STORAGE_OOS_KEY = "stock_toko_barang_habis";
     const STORAGE_RESTOCK_KEY = "stock_toko_masuk_lagi";
     const STORAGE_THEME_KEY = "stock_toko_theme";
+    const STORAGE_PERFUME_DB_KEY = "stock_toko_database_parfum";
 
     let rowsData = [];
     let historyData = [];
@@ -284,6 +296,10 @@
     const fileInput = document.getElementById("fileInput");
     const fileLabel = document.getElementById("fileLabel");
     const rawInput = document.getElementById("rawInput");
+    const perfumeDbInput = document.getElementById("perfumeDbInput");
+    const perfumeDbCount = document.getElementById("perfumeDbCount");
+    const btnApplyPerfumeDb = document.getElementById("btnApplyPerfumeDb");
+    const btnExportPerfumeDb = document.getElementById("btnExportPerfumeDb");
     const gasUrlInput = document.getElementById("gasUrlInput");
     const statusBox = document.getElementById("statusBox");
     const tableBody = document.getElementById("tableBody");
@@ -299,6 +315,108 @@
     const btnClearAll = document.getElementById("btnClearAll");
     const btnClearOutOfStock = document.getElementById("btnClearOutOfStock");
     const btnClearRestocked = document.getElementById("btnClearRestocked");
+
+    function normalizeNameKey(name) {
+      return String(name || "").replace(/\s+/g, " ").trim().toLowerCase();
+    }
+
+    function normalizeDisplayName(name) {
+      return String(name || "").replace(/\s+/g, " ").trim();
+    }
+
+    function parsePerfumeDatabaseText(text) {
+      const lines = String(text || "")
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      const map = new Map();
+      for (const line of lines) {
+        let namePart = line;
+        let qtyPart = 0;
+
+        if (line.includes("|")) {
+          const parts = line.split("|");
+          namePart = parts[0] || "";
+          qtyPart = parseQty(parts[1] || 0);
+        } else if (line.includes("\t")) {
+          const parts = line.split("\t");
+          namePart = parts[0] || "";
+          qtyPart = parseQty(parts[1] || 0);
+        } else if (/^.+,\s*\d+$/.test(line)) {
+          const lastComma = line.lastIndexOf(",");
+          namePart = line.slice(0, lastComma);
+          qtyPart = parseQty(line.slice(lastComma + 1));
+        }
+
+        const clean = normalizeDisplayName(namePart);
+        const key = normalizeNameKey(clean);
+        if (!clean || !key) continue;
+
+        const safeQty = Math.max(0, Number(qtyPart) || 0);
+        if (map.has(key)) {
+          map.get(key).qty += safeQty;
+        } else {
+          map.set(key, { name: clean, qty: safeQty });
+        }
+      }
+
+      return Array.from(map.values());
+    }
+
+    function updatePerfumeDbCounter() {
+      const parsed = parsePerfumeDatabaseText(perfumeDbInput.value);
+      perfumeDbCount.textContent = `${fmtNum(parsed.length)} item`;
+    }
+
+    function savePerfumeDatabase() {
+      localStorage.setItem(STORAGE_PERFUME_DB_KEY, perfumeDbInput.value);
+      updatePerfumeDbCounter();
+    }
+
+    perfumeDbInput.addEventListener("input", savePerfumeDatabase);
+
+    btnApplyPerfumeDb.addEventListener("click", () => {
+      clearStatus();
+      const dbItems = parsePerfumeDatabaseText(perfumeDbInput.value);
+      if (!dbItems.length) {
+        setStatus("Database nama parfum masih kosong.", "warn");
+        return;
+      }
+
+      currentFileName = "Database Parfum";
+      markRestockedItems(dbItems);
+      rowsData = mergeIncomingIntoStock(rowsData, dbItems, true);
+      saveLocalState();
+      renderTable();
+
+      setStatus(
+        `Database parfum (${dbItems.length} item) dimasukkan dan qty-nya ditambahkan ke nama parfum yang sama di stok aktif.`,
+        "success"
+      );
+    });
+
+    btnExportPerfumeDb.addEventListener("click", () => {
+      const sourceItems = rowsData.length ? rowsData : parsePerfumeDatabaseText(perfumeDbInput.value);
+      if (!sourceItems.length) {
+        setStatus("Tidak ada data database parfum untuk di-export.", "warn");
+        return;
+      }
+
+      const csvLines = [
+        "Nama Parfum,Qty",
+        ...sourceItems.map((i) => `"${String(i.name).replace(/"/g, '""')}",${Number(i.qty) || 0}`)
+      ];
+      const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "database-nama-parfum.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus(`Export database berhasil (${sourceItems.length} nama parfum).`, "success");
+    });
 
     function applyTheme(isDark) {
       document.documentElement.classList.toggle("dark", isDark);
@@ -356,11 +474,11 @@
     }
 
     function addToOutOfStock(itemName) {
-      const clean = String(itemName || "").trim();
+      const clean = normalizeDisplayName(itemName);
       if (!clean) return;
       const nowStr = formatNowDate();
       const existingIdx = outOfStockData.findIndex(
-        (o) => String(o.name || "").trim().toLowerCase() === clean.toLowerCase()
+        (o) => normalizeNameKey(o.name) === normalizeNameKey(clean)
       );
       const entry = {
         name: clean,
@@ -384,12 +502,12 @@
       let changed = false;
 
       for (const inc of incomingItems) {
-        const incKey = String(inc.name || "").trim().toLowerCase();
+        const incKey = normalizeNameKey(inc.name);
         const incQty = Math.max(0, Number(inc.qty) || 0);
         if (!incKey) continue;
 
         for (const oos of outOfStockData) {
-          if (String(oos.name || "").trim().toLowerCase() === incKey && oos.status === "Habis") {
+          if (normalizeNameKey(oos.name) === incKey && oos.status === "Habis") {
             const prevHabis = oos.tanggalHabis || "-";
             oos.tanggalMasukLagi = nowStr;
             oos.qtyMasukLagi = incQty;
@@ -512,6 +630,12 @@
 
     function loadLocalState() {
       try {
+        const rawDb = localStorage.getItem(STORAGE_PERFUME_DB_KEY);
+        if (typeof rawDb === "string") {
+          perfumeDbInput.value = rawDb;
+        }
+        updatePerfumeDbCounter();
+
         const raw = localStorage.getItem(STORAGE_REKAP_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
@@ -651,8 +775,8 @@
         }
       });
 
-      if (numIndices.length >= 2) {
-        const qtyIdx = numIndices[numIndices.length - 1] === tokens.length - 1 && numIndices.length >= 3
+      if (numIndices.length >= 1) {
+        const qtyIdx = numIndices.length >= 2 && numIndices[numIndices.length - 1] === tokens.length - 1 && numIndices.length >= 3
           ? numIndices[numIndices.length - 3]
           : numIndices[numIndices.length - 1];
         const qty = parseQty(tokens[qtyIdx]);
@@ -735,45 +859,57 @@
 
       const map = new Map();
       for (const item of extracted) {
-        const key = item.name.toLowerCase();
+        const clean = normalizeDisplayName(item.name);
+        const key = normalizeNameKey(clean);
+        if (!key) continue;
         if (map.has(key)) {
           map.get(key).qty += item.qty;
         } else {
-          map.set(key, { name: item.name, qty: item.qty });
+          map.set(key, { name: clean, qty: item.qty });
         }
       }
-      let list = Array.from(map.values());
-
-      if (document.getElementById("hideZero").checked) {
-        list = list.filter((i) => i.qty > 0);
-      }
-
-      return list;
+      return Array.from(map.values());
     }
 
     function mergeIncomingIntoStock(existingStock, incomingItems, shouldAdd) {
       if (!shouldAdd || existingStock.length === 0) {
-        return incomingItems.map((i) => ({ name: i.name, qty: Number(i.qty) || 0 }));
+        const freshMap = new Map();
+        for (const i of incomingItems) {
+          const clean = normalizeDisplayName(i.name);
+          const key = normalizeNameKey(clean);
+          if (!key) continue;
+          const q = Math.max(0, Number(i.qty) || 0);
+          if (freshMap.has(key)) {
+            freshMap.get(key).qty += q;
+          } else {
+            freshMap.set(key, { name: clean, qty: q });
+          }
+        }
+        return Array.from(freshMap.values());
       }
 
       const map = new Map();
       for (const item of existingStock) {
-        const key = String(item.name || "").trim().toLowerCase();
+        const clean = normalizeDisplayName(item.name);
+        const key = normalizeNameKey(clean);
         if (!key) continue;
-        map.set(key, {
-          name: String(item.name).trim(),
-          qty: Math.max(0, Number(item.qty) || 0)
-        });
+        const q = Math.max(0, Number(item.qty) || 0);
+        if (map.has(key)) {
+          map.get(key).qty += q;
+        } else {
+          map.set(key, { name: clean, qty: q });
+        }
       }
 
       for (const inc of incomingItems) {
-        const key = String(inc.name || "").trim().toLowerCase();
+        const clean = normalizeDisplayName(inc.name);
+        const key = normalizeNameKey(clean);
         if (!key) continue;
         const incQty = Math.max(0, Number(inc.qty) || 0);
         if (map.has(key)) {
           map.get(key).qty += incQty;
         } else {
-          map.set(key, { name: String(inc.name).trim(), qty: incQty });
+          map.set(key, { name: clean, qty: incQty });
         }
       }
 
@@ -903,10 +1039,16 @@
             <td class="py-2.5 px-4 text-right text-slate-700 dark:text-slate-300">${fmtNum(entry.totalJenis || 0)}</td>
             <td class="py-2.5 px-4 text-right font-semibold text-indigo-700 dark:text-indigo-400">${fmtNum(entry.totalQty || 0)}</td>
             <td class="py-2.5 px-4 text-right">
-              <button type="button" data-hidx="${idx}"
-                class="btn-load-history px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
-                Load
-              </button>
+              <div class="inline-flex items-center justify-end gap-1.5">
+                <button type="button" data-hidx="${idx}"
+                  class="btn-load-history px-3 py-1 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition">
+                  Load
+                </button>
+                <button type="button" data-didx="${idx}"
+                  class="btn-del-history px-2.5 py-1 text-xs font-semibold rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 transition">
+                  Hapus
+                </button>
+              </div>
             </td>
           </tr>`)
         .join("");
@@ -927,6 +1069,19 @@
           saveLocalState();
           renderTable();
           setStatus(`Memuat ${rowsData.length} item dari riwayat tanggal ${chosen.tanggalLabel} ke bagian 2.`, "success");
+        });
+      });
+
+      historyBody.querySelectorAll(".btn-del-history").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const idx = Number(e.target.dataset.didx);
+          const chosen = list[idx];
+          if (!chosen) return;
+          historyData = historyData.filter((item) => item !== chosen);
+          saveLocalHistory();
+          populateMonthFilter();
+          renderHistory();
+          setStatus(`Riwayat "${chosen.namaFile}" (${chosen.tanggalLabel}) dihapus.`, "info");
         });
       });
     }
@@ -1006,15 +1161,12 @@
       }
 
       markRestockedItems(parsed);
-      const shouldAdd = document.getElementById("addToExisting").checked;
-      rowsData = mergeIncomingIntoStock(rowsData, parsed, shouldAdd);
+      rowsData = mergeIncomingIntoStock(rowsData, parsed, true);
       saveLocalState();
       renderTable();
 
       setStatus(
-        shouldAdd
-          ? `Berhasil menambahkan hasil rekap (${parsed.length} item) ke stok aktif bagian 2 (total ${rowsData.length} jenis barang).`
-          : `Berhasil memperbarui bagian 2 dengan ${rowsData.length} jenis barang.`,
+        `Berhasil menambahkan hasil rekap (${parsed.length} item) ke stok aktif bagian 2 (total ${rowsData.length} jenis barang).`,
         "success"
       );
     });
