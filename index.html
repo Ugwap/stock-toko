@@ -27,6 +27,8 @@
       </div>
     </div>
 
+    <div id="alertBox" class="hidden mb-6 rounded-xl border px-4 py-3 text-sm"></div>
+
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <!-- Kolom Kiri: Import & Input -->
       <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4">
@@ -148,6 +150,23 @@
     const fileStatus = document.getElementById("fileStatus");
     const resultBody = document.getElementById("resultBody");
     const searchInput = document.getElementById("searchInput");
+    const alertBox = document.getElementById("alertBox");
+
+    function showAlert(msg, type = "warn") {
+      alertBox.classList.remove("hidden", "bg-amber-50", "border-amber-200", "text-amber-800", "bg-rose-50", "border-rose-200", "text-rose-800", "bg-emerald-50", "border-emerald-200", "text-emerald-800");
+      if (type === "error") {
+        alertBox.classList.add("bg-rose-50", "border-rose-200", "text-rose-800");
+      } else if (type === "success") {
+        alertBox.classList.add("bg-emerald-50", "border-emerald-200", "text-emerald-800");
+      } else {
+        alertBox.classList.add("bg-amber-50", "border-amber-200", "text-amber-800");
+      }
+      alertBox.textContent = msg;
+    }
+
+    function hideAlert() {
+      alertBox.classList.add("hidden");
+    }
 
     function parseQtyNumber(str) {
       if (str === undefined || str === null) return 0;
@@ -156,142 +175,122 @@
       return Number.isFinite(num) ? num : 0;
     }
 
-    function isIgnoredLine(line) {
-      const lower = line.toLowerCase();
-      return (
-        !line.trim() ||
-        lower.includes("villa parfum") ||
-        lower.includes("parfum refill") ||
-        lower.includes("office jl.") ||
-        lower.includes("kepada yth") ||
-        lower.includes("toko cibaduyut") ||
-        lower.includes("bandung") ||
-        lower.includes("regional 1") ||
-        lower.includes("perhatian") ||
-        lower.includes("invoice") ||
-        lower.includes("27 november") ||
-        lower.includes("adm gudang") ||
-        lower.includes("email:") ||
-        lower.includes("periksa penerimaan") ||
-        lower.includes("komplain tidak diterima") ||
-        (lower.includes("nama barang") && lower.includes("qty")) ||
-        lower.includes("items terkirim") ||
-        lower.includes("jumlah nominal") ||
-        lower.includes("kepala gudang") ||
-        lower === "checker" ||
-        lower === "driver" ||
-        lower === "rp" ||
-        /^[()|\s]+$/.test(line) ||
-        /^\d{1,3}(\.\d{3})*$/.test(line.trim())
-      );
+    function isHeaderOrFooter(line) {
+      const l = line.toLowerCase().trim();
+      if (!l) return true;
+      const ignoreExact = [
+        "no", "code", "nama barang", "qty", "harga", "jumlah",
+        "checker", "kepala gudang penerima", "driver", "rp",
+        "villa parfum", "parfum refill specialist", "regional 1", "perhatian", "invoice"
+      ];
+      if (ignoreExact.includes(l)) return true;
+      if (/^[()|\s]+$/.test(l)) return true;
+      if (/^\d{1,3}(\.\d{3})*$/.test(l)) return true;
+      if (
+        l.includes("jl. mekar utama") ||
+        l.includes("kepada yth") ||
+        l.includes("adm gudang") ||
+        l.includes("gudangvillaparfum@gmail.com") ||
+        l.includes("periksa penerimaan") ||
+        l.includes("komplain tidak diterima") ||
+        l.includes("items terkirim") ||
+        l.includes("jumlah nominal barang terkirim")
+      ) {
+        return true;
+      }
+      return false;
     }
 
-    function cleanItemName(rawName) {
-      return rawName
+    function cleanItemName(raw) {
+      return raw
         .replace(/\|/g, " ")
-        .replace(/^\d{1,3}\s+/, "")         // hapus nomor urut di depan jika berdiri sendiri
-        .replace(/\b\d{4,5}\b\s*/g, "")    // hapus kode barang 4-5 digit seperti 1154, 20028
-        .replace(/\s+\d{1,2}$/, "")        // hapus nomor urut di akhir
+        .replace(/^\d{1,3}\s+/, "")
+        .replace(/\b\d{4,5}\b\s*/g, "")
+        .replace(/\s+\d{1,2}$/, "")
         .replace(/\s+/g, " ")
         .trim();
     }
 
-    function extractCandidateFromLine(line) {
-      if (isIgnoredLine(line)) return null;
+    function parseInvoiceText(text) {
+      // Satukan baris yang terpecah sebelum/sesudah '|' atau angka
+      const lines = text
+        .replace(/\r\n/g, "\n")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
 
-      // Jika baris memakai format dengan '|'
-      if (line.includes("|")) {
-        const parts = line.split("|").map((p) => p.trim()).filter(Boolean);
-        // Cari bagian yang mengandung huruf sebagai nama barang
-        const namePartIdx = parts.findIndex((p) => /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(p));
-        if (namePartIdx === -1) return null;
+      const blocks = [];
+      let current = "";
 
-        let namePart = parts[namePartIdx];
-        let qty = 0;
+      for (const line of lines) {
+        if (isHeaderOrFooter(line)) continue;
 
-        // Jika ada angka menempel di akhir namePart sebelum '|', cek apakah itu no urut atau qty
-        const trailingNumMatch = namePart.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)$/);
-        if (trailingNumMatch) {
-          namePart = trailingNumMatch[1];
-        }
-
-        // Ambil angka pertama setelah bagian nama barang sebagai Qty
-        for (let i = namePartIdx + 1; i < parts.length; i++) {
-          if (/^\d{1,3}(\.\d{3})*(?:,\d+)?$/.test(parts[i])) {
-            qty = parseQtyNumber(parts[i]);
-            break;
+        // Jika baris mengandung '|', selesaikan satu blok item
+        if (line.includes("|")) {
+          current = current ? `${current} ${line}` : line;
+          blocks.push(current);
+          current = "";
+        } else {
+          // Jika baris ini hanya angka pendek (seperti nomor urut "36" atau "38") dan current sudah punya nama barang
+          if (/^\d{1,3}$/.test(line) && current && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(current)) {
+            current = `${current} ${line}`;
+          } else if (/^\d{3,5}$/.test(line) && !current) {
+            current = line;
+          } else {
+            current = current ? `${current} ${line}` : line;
           }
         }
-
-        const cleanName = cleanItemName(namePart);
-        if (cleanName && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(cleanName)) {
-          return { name: cleanName, qty };
-        }
-        return null;
       }
-
-      // Fallback untuk baris tanpa '|' (misal hasil paste atau CSV/TXT)
-      const tokens = line.split(/\s+/);
-      const numIndices = [];
-      tokens.forEach((tok, idx) => {
-        if (/^\d{1,3}(\.\d{3})*(?:,\d+)?$/.test(tok)) {
-          numIndices.push(idx);
-        }
-      });
-
-      if (numIndices.length >= 2) {
-        // Umumnya Qty adalah angka pertama setelah teks nama barang
-        const qtyIdx = numIndices.find((idx) => idx > 0) ?? numIndices[0];
-        const qty = parseQtyNumber(tokens[qtyIdx]);
-        const nameTokens = tokens.filter((_, idx) => idx !== qtyIdx);
-        const cleanName = cleanItemName(nameTokens.join(" "));
-        if (cleanName && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(cleanName)) {
-          return { name: cleanName, qty };
-        }
-      }
-
-      return null;
-    }
-
-    function parseInvoiceText(text) {
-      const normalized = text
-        .replace(/\r\n/g, "\n")
-        .replace(/\n\s*\|\s*/g, " | ")
-        .replace(/\s*\|\s*\n/g, " | ");
-
-      // Gabungkan baris yang terpotong jika baris berikutnya tidak diawali angka baru/header
-      const rawLines = normalized.split("\n");
-      const mergedLines = [];
-
-      for (const rLine of rawLines) {
-        const trimmed = rLine.trim();
-        if (!trimmed) continue;
-
-        const prev = mergedLines[mergedLines.length - 1];
-        const startsWithPipeOrNumber = /^(\|\s*)?\d{1,5}(\s|\||$)/.test(trimmed);
-        const prevLooksIncomplete =
-          prev &&
-          !prev.includes("|") &&
-          !/\d{1,3}(\.\d{3})*/.test(prev) &&
-          !startsWithPipeOrNumber;
-
-        if (prevLooksIncomplete) {
-          mergedLines[mergedLines.length - 1] = `${prev} ${trimmed}`;
-        } else {
-          mergedLines.push(trimmed);
-        }
-      }
+      if (current) blocks.push(current);
 
       const parsed = [];
-      for (const line of mergedLines) {
-        const item = extractCandidateFromLine(line);
-        if (item) parsed.push(item);
+
+      for (const block of blocks) {
+        if (isHeaderOrFooter(block)) continue;
+
+        if (block.includes("|")) {
+          const parts = block.split("|").map((p) => p.trim()).filter(Boolean);
+          const nameIdx = parts.findIndex((p) => /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(p));
+          if (nameIdx === -1) continue;
+
+          let namePart = parts[nameIdx];
+          // Jika bagian nama diawali nomor urut dan setelahnya ada nama barang (misal "38 Plastik Klip Besar")
+          const cleanName = cleanItemName(namePart.replace(/^(.*?)\s+\d{1,2}$/, "$1"));
+          if (!cleanName || !/[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(cleanName)) continue;
+
+          let qty = 0;
+          // Ambil angka pertama setelah bagian nama barang sebagai Qty
+          for (let i = nameIdx + 1; i < parts.length; i++) {
+            const numMatch = parts[i].match(/\d{1,3}(?:\.\d{3})*(?:,\d+)?/);
+            if (numMatch) {
+              qty = parseQtyNumber(numMatch[0]);
+              break;
+            }
+          }
+
+          parsed.push({ name: cleanName, qty });
+        } else {
+          // Fallback baris tanpa '|'
+          const tokens = block.split(/\s+/);
+          const numIndices = [];
+          tokens.forEach((tok, idx) => {
+            if (/^\d{1,3}(\.\d{3})*(?:,\d+)?$/.test(tok)) numIndices.push(idx);
+          });
+          if (numIndices.length >= 1) {
+            const qtyIdx = numIndices.find((idx) => idx > 0) ?? numIndices[0];
+            const qty = parseQtyNumber(tokens[qtyIdx]);
+            const nameStr = cleanItemName(tokens.filter((_, idx) => idx !== qtyIdx).join(" "));
+            if (nameStr && /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/.test(nameStr)) {
+              parsed.push({ name: nameStr, qty });
+            }
+          }
+        }
       }
 
       const mergeDup = document.getElementById("mergeDuplicates").checked;
       const skipZero = document.getElementById("skipZeroQty").checked;
 
-      let finalList = [];
+      let result = parsed;
       if (mergeDup) {
         const map = new Map();
         for (const item of parsed) {
@@ -302,16 +301,14 @@
             map.set(key, { name: item.name, qty: item.qty });
           }
         }
-        finalList = Array.from(map.values());
-      } else {
-        finalList = parsed;
+        result = Array.from(map.values());
       }
 
       if (skipZero) {
-        finalList = finalList.filter((i) => i.qty > 0);
+        result = result.filter((i) => i.qty > 0);
       }
 
-      return finalList;
+      return result;
     }
 
     function formatQty(num) {
@@ -359,8 +356,12 @@
     }
 
     async function extractPdfText(file) {
+      if (!window.pdfjsLib) {
+        throw new Error("Library PDF.js tidak termuat.");
+      }
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true });
+      const pdf = await loadingTask.promise;
       let fullText = "";
 
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
@@ -370,7 +371,7 @@
 
         for (const item of content.items) {
           if (!item.str || !item.str.trim()) continue;
-          const y = Math.round(item.transform[5] / 5) * 5;
+          const y = Math.round(item.transform[5] / 6) * 6;
           if (!rows.has(y)) rows.set(y, []);
           rows.get(y).push({ x: item.transform[4], str: item.str.trim() });
         }
@@ -387,7 +388,9 @@
     fileInput.addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      hideAlert();
       fileStatus.textContent = `Membaca ${file.name}...`;
+
       try {
         let text = "";
         if (file.name.toLowerCase().endsWith(".pdf")) {
@@ -395,28 +398,54 @@
         } else {
           text = await file.text();
         }
+
         rawInput.value = text;
+
+        if (!text.trim()) {
+          fileStatus.textContent = `${file.name} tidak memiliki teks seleksi (kemungkinan PDF hasil scan).`;
+          showAlert("PDF tidak mengandung lapisan teks yang bisa dibaca otomatis. Silakan copy-paste isi teks invoice ke kotak di kiri lalu klik Proses Rekap.", "warn");
+          currentItems = [];
+          renderTable();
+          return;
+        }
+
         fileStatus.textContent = `Berhasil memuat: ${file.name}`;
         currentItems = parseInvoiceText(text);
         renderTable();
+
+        if (currentItems.length === 0) {
+          showAlert("Teks file berhasil dibaca ke kolom kiri, tetapi pola baris barang belum terdeteksi otomatis. Cek teks di kolom kiri atau klik Proses Rekap.", "warn");
+        } else {
+          showAlert(`Berhasil merekap ${currentItems.length} jenis barang dari ${file.name}.`, "success");
+        }
       } catch (err) {
-        fileStatus.textContent = `Gagal membaca file: ${err.message}`;
+        fileStatus.textContent = `Gagal membaca file`;
+        showAlert(`Terjadi kendala saat membaca file: ${err.message}`, "error");
       }
     });
 
     document.getElementById("btnProcess").addEventListener("click", () => {
+      hideAlert();
       currentItems = parseInvoiceText(rawInput.value);
       renderTable();
+      if (currentItems.length > 0) {
+        showAlert(`Berhasil memproses ${currentItems.length} jenis barang.`, "success");
+      } else {
+        showAlert("Tidak ada item barang yang berhasil dikenali dari input saat ini.", "warn");
+      }
     });
 
     document.getElementById("btnSample").addEventListener("click", () => {
+      hideAlert();
       rawInput.value = SAMPLE_TEXT;
       fileStatus.textContent = "Contoh data invoice dimuat";
       currentItems = parseInvoiceText(SAMPLE_TEXT);
       renderTable();
+      showAlert(`Contoh invoice dimuat (${currentItems.length} item).`, "success");
     });
 
     document.getElementById("btnClear").addEventListener("click", () => {
+      hideAlert();
       rawInput.value = "";
       fileInput.value = "";
       fileStatus.textContent = "Mendukung ekstrak teks invoice PDF secara otomatis";
@@ -430,7 +459,7 @@
       if (!currentItems.length) return;
       const lines = ["Nama Barang\tQty", ...currentItems.map((i) => `${i.name}\t${i.qty}`)];
       await navigator.clipboard.writeText(lines.join("\n"));
-      alert("Hasil rekap (Nama Barang & Qty) berhasil disalin!");
+      showAlert("Hasil rekap (Nama Barang & Qty) berhasil disalin ke clipboard.", "success");
     });
 
     document.getElementById("btnExportCsv").addEventListener("click", () => {
